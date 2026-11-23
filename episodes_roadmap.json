@@ -1,0 +1,272 @@
+[
+  {
+    "episode_number": 1,
+    "title": "Why Your Brain Loves Being Lied To",
+    "hook_3_words": "YOUR MIND LIES",
+    "core_concept": "Cognitive Dissonance & Self-Justification (Leon Festinger)",
+    "visual_metaphor": "The Meras Explorer standing before a glowing split mirror showing two contradictory realities, while internal neon neural gears grind and spark until one reality is painted over.",
+    "curiosity_logline": "When your actions contradict your beliefs, your brain doesn't admit failure. It rewrites your memory and invents an elaborate illusion to keep your ego intact.",
+    "color_palette": ["#00E5FF", "#FF3B6B", "#FFB800", "#161B40"]
+  },
+  {
+    "episode_number": 2,
+    "title": "The Dopamine Slot Machine in Your Skull",
+    "hook_3_words": "TRAPPED IN REWARD",
+    "core_concept": "Dopamine Prediction Error & Variable Ratio Reinforcement",
+    "visual_metaphor": "A massive geometric floating slot machine inside an obsidian brain chamber dispensing erratic glowing cyan tokens to the mesmerized Explorer.",
+    "curiosity_logline": "Dopamine isn't the chemical of pleasure—it's the chemical of anticipation. Why predictable joy bores you, while unpredictable breadcrumbs keep you addicted.",
+    "color_palette": ["#00E5FF", "#FFB800", "#6C2BD9", "#090D24"]
+  },
+  {
+    "episode_number": 3,
+    "title": "Nobody Is Looking at You (And Why That's Terrifying)",
+    "hook_3_words": "NOBODY CARES",
+    "core_concept": "The Spotlight Effect & Egocentric Anchoring (Gilovich & Savitsky)",
+    "visual_metaphor": "The Explorer standing under an enormous blinding electric-cyan stadium spotlight in an infinite obsidian void, surrounded by faceless shadow spectators all staring into their own private glowing badges.",
+    "curiosity_logline": "We walk through life feeling perpetually audited by everyone around us. The strange neurological math behind why everyone is far too self-absorbed to notice your flaws.",
+    "color_palette": ["#00E5FF", "#6C2BD9", "#FF3B6B", "#0D1130"]
+  },
+  {
+    "episode_number": 4,
+    "title": "The Architecture of Willpower (Why Diets Fail at 9 PM)",
+    "hook_3_words": "WILLPOWER IS DEAD",
+    "core_concept": "Decision Fatigue & Ego Depletion vs. Motivational Scarcity",
+    "visual_metaphor": "The Explorer carrying a glowing, translucent battery crystal through a gauntlet of neon decision-gates, watching the crystal leak energy until collapsing before a seductive midnight snack portal.",
+    "curiosity_logline": "Your prefrontal cortex operates on finite fuel. By examining the hidden cognitive cost of every trivial daily micro-decision, we uncover why your discipline evaporates after dusk.",
+    "color_palette": ["#FF3B6B", "#FFB800", "#00E5FF", "#0A0E28"]
+  },
+  {
+    "episode_number": 5,
+    "title": "The Hedonic Treadmill: Why Happiness Evaporates",
+    "hook_3_words": "ENDLESS CHASE",
+    "core_concept": "Hedonic Adaptation & Baseline Setpoints (Brickman & Campbell)",
+    "visual_metaphor": "A glowing geometric treadmill suspended in deep cosmic space where the Explorer runs toward radiant golden trophies that instantly turn into plain grey stone upon contact.",
+    "curiosity_logline": "Whether you win the lottery or face catastrophe, human happiness stubbornly returns to baseline. The evolutionary engineering that keeps humanity perpetual strivers.",
+    "color_palette": ["#FFB800", "#00E5FF", "#FF3B6B", "#101438"]
+  },
+  {
+    "episode_number": 6,
+    "title": "Why You Procrastinate on Things You Actually Care About",
+    "hook_3_words": "FEAR OF PERFECTION",
+    "core_concept": "Hyperbolic Discounting & Amygdala Emotional Hijacking",
+    "visual_metaphor": "The Explorer paralyzed at a crossroad between an immediate glowing neon micro-marshmallow and a giant distant golden monument obscured by thick purple fog.",
+    "curiosity_logline": "Procrastination isn't a time-management failure; it's an emotional regulation glitch. Your emotional brain treats your future self as a complete stranger.",
+    "color_palette": ["#6C2BD9", "#00E5FF", "#FF3B6B", "#090D24"]
+  },
+  {
+    "episode_number": 7,
+    "title": "The Dark Side of Being 'Right': Confirmation Bias",
+    "hook_3_words": "BLINDED BY TRUTH",
+    "core_concept": "Confirmation Bias & Identity-Protective Cognition",
+    "visual_metaphor": "The Explorer wearing glowing magenta tinted goggles that filter out a vibrant constellation of colorful factual stars, leaving only identical matching purple triangles.",
+    "curiosity_logline": "Your brain treats opposing evidence like a physical pathogen. How the immune system of your ego systematically dismantles counter-facts before you can perceive them.",
+    "color_palette": ["#FF3B6B", "#6C2BD9", "#00E5FF", "#0C1032"]
+  },
+  {
+    "episode_number": 8,
+    "title": "The Illusion of Control: Are You Really Making Choices?",
+    "hook_3_words": "FREE WILL ILLUSION",
+    "core_concept": "Libet Experiments, Readiness Potential & Post-Hoc Rationalization",
+    "visual_metaphor": "A colossal puppeteer made of obsidian neural fibers holding delicate glowing strings attached to the Explorer's hands, 300 milliseconds before the Explorer believes they decided to move.",
+    "curiosity_logline": "Brain scans can predict your conscious decisions up to several seconds before you believe you made them. The unsettling mechanics of the conscious narrator.",
+    "color_palette": ["#00E5FF", "#6C2BD9", "#FFB800", "#080C20"]
+  },
+  {
+    "episode_number": 9,
+    "title": "Why Small Habits Snowball Into Massive Destinies",
+    "hook_3_words": "TINY MONSTER",
+    "core_concept": "Neuroplasticity, Myelination & The Habit Loop (Basal Ganglia)",
+    "visual_metaphor": "A microscopic glowing trail in a dense forest of obsidian neurons that transforms into a blazing superhighway paved with radiant cyan light.",
+    "curiosity_logline": "The brain physically rewires itself for repetition, wrapping neural circuits in biological insulation. The exponential power of 1% compounding cognitive shifts.",
+    "color_palette": ["#00E5FF", "#FFB800", "#FF3B6B", "#0E133A"]
+  },
+  {
+    "episode_number": 10,
+    "title": "The Memory Lie: Why Your Past Never Happened",
+    "hook_3_words": "MEMORIES ARE FAKE",
+    "core_concept": "Memory Reconsolidation & Elizabeth Loftus's False Memory Syndrome",
+    "visual_metaphor": "A vast library where the Explorer opens glowing memory books, each time unknowingly rewriting the words with a glowing cyan stylus before returning them to the shelf.",
+    "curiosity_logline": "Every time you recall a vivid memory, you don't play a recording—you reconstruct it from scratch, contaminated by who you are today.",
+    "color_palette": ["#6C2BD9", "#00E5FF", "#FFB800", "#0A0D26"]
+  },
+  {
+    "episode_number": 11,
+    "title": "The Psychology of Social Proof: The Sheep in the Crowd",
+    "hook_3_words": "FOLLOW THE HERD",
+    "core_concept": "Asch Conformity, Informational Cascades & Pluralistic Ignorance",
+    "visual_metaphor": "A row of identical glowing obsidian figures pointing towards an obviously curved line and claiming it's straight, as the Explorer feels a magnetic cyan force bending their own arm.",
+    "curiosity_logline": "In ambiguous situations, we look to others for clues—unaware that everyone else is doing the exact same thing. How crowds invent reality from nothing.",
+    "color_palette": ["#FF3B6B", "#00E5FF", "#FFB800", "#0B0F2E"]
+  },
+  {
+    "episode_number": 12,
+    "title": "The Paradox of Choice: Why Options Paralyze You",
+    "hook_3_words": "TOO MANY DOORS",
+    "core_concept": "The Jam Study & Maximizers vs. Satisficers (Barry Schwartz)",
+    "visual_metaphor": "An infinite corridor of 10,000 glowing neon doors where the Explorer stands frozen, while regret specters whisper alternative futures through every keyhole.",
+    "curiosity_logline": "Modern society promises that limitless freedom brings absolute satisfaction. Why having 50 options makes you exponentially more miserable than having three.",
+    "color_palette": ["#FFB800", "#6C2BD9", "#00E5FF", "#090D24"]
+  },
+  {
+    "episode_number": 13,
+    "title": "Why You Hate Unfinished Tasks: The Zeigarnik Effect",
+    "hook_3_words": "NEVER LET GO",
+    "core_concept": "Cognitive Open Loops & Task Incompletion Tension (Bluma Zeigarnik)",
+    "visual_metaphor": "A floating obsidian sphere covered in glowing open locks that emit high-frequency neon vibrations until the Explorer clicks them shut.",
+    "curiosity_logline": "Why a cliffhanger keeps you awake at 2 AM, and how your brain maintains high-alert mental RAM for every interrupted project in your life.",
+    "color_palette": ["#00E5FF", "#FF3B6B", "#6C2BD9", "#0F1436"]
+  },
+  {
+    "episode_number": 14,
+    "title": "The Dunning-Kruger Trap: The Confidence of Beginners",
+    "hook_3_words": "MOUNT STUPID",
+    "core_concept": "Metacognitive Deficit & Skill Perception (Kruger & Dunning)",
+    "visual_metaphor": "The Explorer climbing a sharp neon mountain labeled 'Mount Stupid', looking proudly down at a shallow cliff, oblivious to the vast dark chasm of knowledge just ahead.",
+    "curiosity_logline": "When you know very little about a subject, you lack the exact competence needed to realize just how incompetent you are.",
+    "color_palette": ["#FFB800", "#00E5FF", "#FF3B6B", "#080C22"]
+  },
+  {
+    "episode_number": 15,
+    "title": "Why Smart People Fall for Dumb Conspiracies",
+    "hook_3_words": "SECRET PATTERNS",
+    "core_concept": "Apophenia, Pareidolia & Compensatory Control Theory",
+    "visual_metaphor": "The Explorer connecting random floating glowing cosmic stars with red laser threads until an imaginary dragon face emerges in the void.",
+    "curiosity_logline": "When randomness threatens our sense of control, the human brain would rather manufacture a sinister mastermind than accept chaos.",
+    "color_palette": ["#FF3B6B", "#6C2BD9", "#00E5FF", "#0A0E2B"]
+  },
+  {
+    "episode_number": 16,
+    "title": "The Peak-End Rule: How You Rate Your Life",
+    "hook_3_words": "ONLY THE END",
+    "core_concept": "Duration Neglect & The Remembering Self (Daniel Kahneman)",
+    "visual_metaphor": "A 10-hour glowing timeline wave whose massive smooth valley is completely erased, leaving only the highest glowing neon crest and the final splash.",
+    "curiosity_logline": "Your brain doesn't compute average happiness over time. It judges an entire vacation, relationship, or movie by two moments: the emotional climax and the finale.",
+    "color_palette": ["#00E5FF", "#FFB800", "#FF3B6B", "#11163F"]
+  },
+  {
+    "episode_number": 17,
+    "title": "The Sunk Cost Fallacy: Why We Cling to Bad Investments",
+    "hook_3_words": "CAN'T QUIT NOW",
+    "core_concept": "Loss Aversion & Honorific Escalation of Commitment",
+    "visual_metaphor": "The Explorer dragging a heavy obsidian boulder chained to their ankle up an erupting volcano, because they already paid three gold coins to rent the boulder.",
+    "curiosity_logline": "The past is gone and unrecoverable, yet we pour good money, years, and tears after bad. The psychological trap of refusing to cut your losses.",
+    "color_palette": ["#FF3B6B", "#00E5FF", "#6C2BD9", "#090D25"]
+  },
+  {
+    "episode_number": 18,
+    "title": "The Default Mode Network: What Happens When You Daydream?",
+    "hook_3_words": "MIND WANDERING",
+    "core_concept": "DMN vs. Task-Positive Network & Spontaneous Cognition",
+    "visual_metaphor": "When the Explorer ceases pushing a heavy kinetic gear, the surrounding laboratory dissolves into an ethereal nebula of memories, future simulations, and creative sparks.",
+    "curiosity_logline": "When you stop focusing on a task, your brain doesn't shut down—it consumes 95% as much energy running an intricate mental holodeck of self-reflection.",
+    "color_palette": ["#6C2BD9", "#00E5FF", "#FFB800", "#0D1234"]
+  },
+  {
+    "episode_number": 19,
+    "title": "Why Loneliness Physically Hurts: The Evolutionary Wire",
+    "hook_3_words": "LETHAL ISOLATION",
+    "core_concept": "Social Rejection, Anterior Cingulate Cortex & Opioid System",
+    "visual_metaphor": "The Explorer separated from an obsidian tribal circle by a glowing cyan canyon, as physical neural alarms flash red across their chest.",
+    "curiosity_logline": "In the ancestral savanna, isolation meant immediate death. Why the brain processes social rejection with the exact same neural circuitry as a physical broken bone.",
+    "color_palette": ["#FF3B6B", "#6C2BD9", "#FFB800", "#080B1F"]
+  },
+  {
+    "episode_number": 20,
+    "title": "The Illusion of Explanatory Depth: How Little You Understand",
+    "hook_3_words": "YOU KNOW NOTHING",
+    "core_concept": "Cognitive Superficiality & The Flush Toilet Experiment (Rozenblit & Keil)",
+    "visual_metaphor": "The Explorer proudly gesturing to a sleek glowing vector bicycle, but when asked to reveal the internal gears, the bicycle splits into disconnected, floating question marks.",
+    "curiosity_logline": "You think you know how a zipper, a toilet, or an engine works—until asked to diagram it. The staggering gap between our felt understanding and actual knowledge.",
+    "color_palette": ["#FFB800", "#00E5FF", "#6C2BD9", "#0B1030"]
+  },
+  {
+    "episode_number": 21,
+    "title": "The Pygmalion Effect: Believing Makes It Real",
+    "hook_3_words": "EXPECTATIONS SHAPE",
+    "core_concept": "Self-Fulfilling Prophecies & Teacher Expectancy (Rosenthal)",
+    "visual_metaphor": "The Explorer sculpting a dim, shapeless obsidian silhouette with rays of glowing warm amber light, gradually turning it into a radiant towering guardian.",
+    "curiosity_logline": "The expectations people hold about your ability directly dictate the subtle micro-cues they send, transforming ordinary individuals into extraordinary performers.",
+    "color_palette": ["#FFB800", "#00E5FF", "#FF3B6B", "#0E1339"]
+  },
+  {
+    "episode_number": 22,
+    "title": "The Scarcity Mindset: How Poverty Lowers IQ",
+    "hook_3_words": "BANDWIDTH DRAIN",
+    "core_concept": "Mental Bandwidth Tax & Cognitive Tunneling (Mullainathan & Shafir)",
+    "visual_metaphor": "The Explorer running through a high-stakes puzzle chamber while their vision tunnels into a dark tunnel, restricted to a tiny countdown timer in the corner.",
+    "curiosity_logline": "When a vital resource is scarce—money, time, or calories—the brain captures all cognitive bandwidth, temporarily dropping effective IQ by 13 points.",
+    "color_palette": ["#FF3B6B", "#6C2BD9", "#FFB800", "#090D24"]
+  },
+  {
+    "episode_number": 23,
+    "title": "The Pratfall Effect: Why Flaws Make You Likable",
+    "hook_3_words": "CHARMING FLAWS",
+    "core_concept": "Vulnerability, Competence & Interpersonal Attraction (Aronson)",
+    "visual_metaphor": "A flawless glowing crystalline statue of the Explorer standing cold and distant; when a tiny chip falls off, the statue suddenly glows with warm, inviting amber radiance.",
+    "curiosity_logline": "Perfection breeds intimidation and envy. Why a highly competent person who spills coffee becomes instantly more endearing to the room.",
+    "color_palette": ["#FFB800", "#FF3B6B", "#00E5FF", "#10153D"]
+  },
+  {
+    "episode_number": 24,
+    "title": "Why You Misjudge Others: The Fundamental Attribution Error",
+    "hook_3_words": "IT'S NOT THEM",
+    "core_concept": "Actor-Observer Asymmetry & Context Blindness (Lee Ross)",
+    "visual_metaphor": "When another figure cuts off the Explorer in neon traffic, a giant label flashes 'EVIL SOUL'; but when the Explorer cuts someone off, labels flash 'EMERGENCY! RUSHING!'.",
+    "curiosity_logline": "When others make mistakes, we blame their character. When we make mistakes, we blame our circumstances. The invisible lens distorting every judgment.",
+    "color_palette": ["#00E5FF", "#FF3B6B", "#6C2BD9", "#090D27"]
+  },
+  {
+    "episode_number": 25,
+    "title": "The Intrusive Thought: Why You Think Horrible Things",
+    "hook_3_words": "DARK THOUGHTS",
+    "core_concept": "L'appel du Vide (Call of the Void) & Inhibitory Control Monitoring",
+    "visual_metaphor": "The Explorer standing on the edge of a cosmic neon cliff; a shadowy glitch whisper floats by, but is instantly vacuumed into an internal neural incinerator.",
+    "curiosity_logline": "Standing on a high balcony, a strange urge whispers: 'What if I jump?' Why dark intrusive thoughts are actually your brain's extreme survival warning mechanism.",
+    "color_palette": ["#6C2BD9", "#FF3B6B", "#00E5FF", "#070B1E"]
+  },
+  {
+    "episode_number": 26,
+    "title": "The Halo Effect: The Unfair Power of Beauty",
+    "hook_3_words": "BEAUTY PRIVILEGE",
+    "core_concept": "Cognitive Bias & Generalization of Positive Traits (Thorndike)",
+    "visual_metaphor": "A glowing golden aura surrounds an obsidian figure, causing three automatic stamp marks of 'INTELLIGENT', 'HONEST', and 'KIND' to illuminate effortlessly.",
+    "curiosity_logline": "One visible positive trait automatically illuminates every other unrelated dimension of character. The deep unconscious bias shaping hiring, trials, and politics.",
+    "color_palette": ["#FFB800", "#00E5FF", "#6C2BD9", "#0D1133"]
+  },
+  {
+    "episode_number": 27,
+    "title": "Why You Give Better Advice to Others Than Yourself",
+    "hook_3_words": "SOLOMON'S CURSE",
+    "core_concept": "Solomon's Paradox & Psychological Distance / Self-Distancing (Grossmann)",
+    "visual_metaphor": "King Solomon Explorer dispensing brilliant glowing scrolls to a crowd of kings, while his own private palace burns unnoticed behind him.",
+    "curiosity_logline": "We reason with profound wisdom when analyzing someone else's dilemma, yet become emotional wrecks with our own. The cognitive hack of the third-person perspective.",
+    "color_palette": ["#FFB800", "#FF3B6B", "#00E5FF", "#0B0E2A"]
+  },
+  {
+    "episode_number": 28,
+    "title": "The Tetris Effect: How Repetition Warps Perception",
+    "hook_3_words": "MIND OVERFLOW",
+    "core_concept": "Procedural Memory Consolidation & Perceptual Priming",
+    "visual_metaphor": "The Explorer looking at buildings, city sidewalks, and clouds, seeing glowing neon geometric tetromino blocks automatically slotting into the architecture.",
+    "curiosity_logline": "Play a game or focus on a spreadsheet for 8 hours, and your visual cortex keeps playing it behind closed eyelids. How modern screens hijack cognitive perceptual templates.",
+    "color_palette": ["#00E5FF", "#6C2BD9", "#FFB800", "#0A0D28"]
+  },
+  {
+    "episode_number": 29,
+    "title": "The Empathy Gap: Why Calm You Hates Emotional You",
+    "hook_3_words": "COLD VS HOT",
+    "core_concept": "Hot-Cold Empathy Gap & Affective Forecasting (George Loewenstein)",
+    "visual_metaphor": "The calm Explorer in an icy blue crystal chamber setting strict tomorrow rules, completely unaware that a fiery magenta magma surge will melt them in seconds.",
+    "curiosity_logline": "When you are calm, full, and relaxed, your brain is utterly incapable of predicting how irrational, hungry, and enraged you will be under stress.",
+    "color_palette": ["#00E5FF", "#FF3B6B", "#6C2BD9", "#080C21"]
+  },
+  {
+    "episode_number": 30,
+    "title": "Neuroplasticity: Can You Truly Rewire Who You Are?",
+    "hook_3_words": "REBUILD YOURSELF",
+    "core_concept": "Adult Neurogenesis, Long-Term Potentiation & Synaptic Pruning",
+    "visual_metaphor": "The Meras Explorer standing at the center of a cosmic obsidian sphere, holding glowing cyan and amber chisels, actively carving and sculpting their own neural constellation.",
+    "curiosity_logline": "Until recently, science believed the adult brain was fixed in stone. How deliberate practice, cognitive reframing, and habit engineering allow you to rebuild your own mind.",
+    "color_palette": ["#00E5FF", "#FFB800", "#6C2BD9", "#090D24"]
+  }
+]

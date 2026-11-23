@@ -1,0 +1,91 @@
+# ==============================================================================
+# MERAS STUDIO - STRICT PRODUCTION GITIGNORE
+# Prevents leaking credentials, local virtual environments, and large media files
+# ==============================================================================
+
+# Environment files & Secrets
+.env
+.env.*
+!.env.example
+!SECRETS_MANIFEST.md
+*.pem
+*.key
+*.pfx
+*.p12
+*secret*.json
+*secret*.key
+*credential*
+token*.json
+client_secret*.json
+*.env.local
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Render outputs & temporary staging directories
+output/
+temp/
+temp_scenes/
+html_staging/
+compositor_temp/
+scratch/
+test-results/
+
+# Large Audio & Video Media Files
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+*.wav
+*.mp3
+*.aac
+*.flac
+*.m4a
+*.ogg
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs, Playwright & Browser artifacts
+*.log
+.playwright/
+playwright-report/
+
+# OS and Editor artifacts
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

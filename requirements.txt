@@ -1,0 +1,22 @@
+# ==============================================================================
+# MERAS STUDIO - CORE PIPELINE DEPENDENCIES
+# Broadcast-grade automated vector animation pipeline
+# ==============================================================================
+
+# Voice Synthesis & Audio Alignment
+azure-cognitiveservices-speech>=1.40.0
+edge-tts>=7.0.0
+faster-whisper>=1.0.0
+
+# Deterministic Visual Motion Rendering
+playwright>=1.40.0
+
+# Audio Processing & Foley DSP
+numpy>=1.26.0
+scipy>=1.12.0
+
+# System, Guardrails & Hardware Telemetry
+psutil>=5.9.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+requests>=2.31.0
