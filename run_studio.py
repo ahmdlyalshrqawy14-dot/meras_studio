@@ -3,18 +3,18 @@ Meras Studio - Master CLI & Production Orchestrator
 Automates end-to-end broadcast-grade Kurzgesagt-style vector animation for "Meras | مِراس".
 
 Architectural Upgrades:
-- 100% Mascot-Free Composable Vector Graphics Engine
-- Youthful AndrewMultilingualNeural voice (rate=+5%, pitch=+1%) with Meras pronunciation lock
-- Audio-Driven Timeline & Zero Cut-off Guarantee (100% audio coverage + 2.0s outro buffer)
-- 8-Second Hook Rule & 2-Second Chapter Title Cards across 6 dynamic chapter palettes
-- Dynamic Ambient Bed Modulation (-24dB baseline swelling to -20dB during conflict)
-- Soft Butterworth-filtered Foley SFX (-22dB) with speech collision avoidance
-- Strict Low-CPU Safe Mode (1 worker, BELOW_NORMAL_PRIORITY_CLASS, -threads 2)
-- Crash-Proof Checkpoint Auto-Resume
+- Dynamic Gemini 2.5 Flash Production Engine with offline algorithmic director fallback
+- Base64 font embedding (Montserrat-Bold, Inter-Regular) with zero font pop
+- Youthful AndrewMultilingualNeural voice (rate=+2%, pitch=0%) with Meras pronunciation lock
+- Audio-Driven Timeline & Zero Cut-off Guarantee (100% audio coverage + 1.2s outro buffer)
+- 48kHz float32 audio pipeline with YouTube broadcast loudness normalization (-14 LUFS, -1 dBTP)
+- Deterministic 30fps motion rendering with fast JPEG piping and adaptive concurrency (2 workers)
+- Exact ffprobe stream duration validation on checkpoint auto-resume
+- Iterative zero-drift crossfade video stitching with fail-fast sync checkpoints
 
 Usage:
   python run_studio.py --episode 1         # Full 8-10 minute master production
-  python run_studio.py --verify            # 30-second multi-scene broadcast verification test
+  python run_studio.py --verify            # 25-second multi-scene broadcast verification test
 """
 
 import os
@@ -44,6 +44,7 @@ from episode_generator import (
     bind_scenes_to_word_timestamps,
     generate_verification_script
 )
+from dynamic_producer import produce_dynamic_episode, is_gemini_available
 
 class UnbufferedTeeLogger:
     """Streams stdout/stderr in unbuffered real-time to both console and a live log file."""
@@ -68,13 +69,73 @@ class UnbufferedTeeLogger:
         except Exception:
             pass
 
-def generate_vertical_short(input_video: str, output_short: str, duration: float = 60.0):
+
+def run_preflight_checks(sfx_dir: Path):
+    """
+    Validates all critical runtime dependencies before executing production:
+    - FFmpeg and FFprobe binaries
+    - Playwright Chromium headless engine
+    - Speech API (Azure or cross-platform fallback)
+    - Dynamic LLM Generator (Gemini or offline algorithmic director)
+    - Procedural Soft SFX assets (auto-builds if missing)
+    """
+    print("\n" + "="*60)
+    print("🔍 RUNNING MERAS STUDIO PREFLIGHT SYSTEM CHECKS")
+    print("="*60)
+
+    # 1. FFmpeg & FFprobe
+    ffmpeg_bin = shutil.which("ffmpeg")
+    ffprobe_bin = shutil.which("ffprobe")
+    if not ffmpeg_bin or not ffprobe_bin:
+        raise RuntimeError(f"FFmpeg/FFprobe missing from PATH! ffmpeg: {ffmpeg_bin}, ffprobe: {ffprobe_bin}")
+    print(f"✓ FFmpeg & FFprobe detected: {ffmpeg_bin}")
+
+    # 2. Playwright Chromium
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+        print("✓ Playwright Chromium browser initialized successfully")
+    except Exception as e:
+        raise RuntimeError(f"Playwright Chromium check failed: {e}. Run 'playwright install chromium' to fix.")
+
+    # 3. Speech API
+    azure_key = os.getenv("AZURE_SPEECH_KEY")
+    if azure_key and azure_key.strip() and not azure_key.startswith("your_"):
+        print("✓ Azure Speech synthesis configured (Neural Andrew voice active)")
+    else:
+        print("ℹ️ Azure Speech key not set or placeholder; will use cross-platform edge-tts fallback")
+
+    # 4. Dynamic LLM Generator
+    if is_gemini_available():
+        print("✓ Gemini 2.5 Flash API configured (Dynamic AI documentary generation enabled)")
+    else:
+        print("ℹ️ GEMINI_API_KEY not configured; using high-fidelity offline algorithmic documentary director")
+
+    # 5. SFX assets
+    required_sfx = ["ambient_bed.wav", "air_whoosh.wav", "gentle_chime.wav", "soft_pop.wav", "sub_drop.wav"]
+    missing = [f for f in required_sfx if not (sfx_dir / f).exists()]
+    if missing:
+        print(f"[Preflight] Synthesizing missing procedural SFX ({missing})...")
+        build_all_sfx(str(sfx_dir))
+    print(f"✓ All procedural SFX assets verified in {sfx_dir}")
+    print("="*60 + "\n")
+
+
+def generate_vertical_short(
+    input_video: str,
+    output_short: str,
+    duration: float = 60.0,
+    headline: str = "WHY YOUR BRAIN LIES"
+):
     """
     Produces a 60-second 9:16 vertical Short from the master cut.
     Uses blurred background + center foreground + branded typography.
     """
-    print(f"[Shorts] Generating 60s 9:16 vertical Short cut from master...")
+    print(f"[Shorts] Generating 60s 9:16 vertical Short cut from master (headline: '{headline}')...")
     creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
+    safe_headline = headline.replace("\\", "\\\\").replace("'", "").replace(":", "\\:").upper()
     cmd = [
         "ffmpeg", "-y",
         "-threads", "2",
@@ -89,7 +150,7 @@ def generate_vertical_short(input_video: str, output_short: str, duration: float
             "eq=brightness=-0.15[bg];"
             "[v2]scale=1080:608:force_original_aspect_ratio=decrease[fg];"
             "[bg][fg]overlay=(W-w)/2:(H-h)/2[v_composed];"
-            "[v_composed]drawtext=text='WHY YOUR BRAIN LIES':fontcolor=white:fontsize=48:font='Montserrat':x=(w-text_w)/2:y=240:shadowcolor=black:shadowx=2:shadowy=2,"
+            f"[v_composed]drawtext=text='{safe_headline}':fontcolor=white:fontsize=48:font='Montserrat':x=(w-text_w)/2:y=240:shadowcolor=black:shadowx=2:shadowy=2,"
             "drawtext=text='MERAS STUDIO':fontcolor=#00E5FF:fontsize=32:font='Montserrat':x=(w-text_w)/2:y=1680"
         ),
         "-c:v", "libx264",
@@ -133,9 +194,17 @@ def generate_vertical_short(input_video: str, output_short: str, duration: float
         subprocess.run(fallback_cmd, check=True, creationflags=creationflags)
     print(f"[Shorts] YouTube Short rendered -> {output_short} ({os.path.getsize(output_short)} bytes)")
 
-def generate_youtube_metadata(ep_data: dict, scene_plan: list, output_path: str):
+
+def generate_youtube_metadata(
+    ep_data: dict,
+    scene_plan: list,
+    output_path: str,
+    chapters: Optional[list] = None,
+    metadata_info: Optional[dict] = None
+):
     """
     Generates 3 high-CTR titles, SEO description with chapter timestamps, and tags.
+    Dynamically adapts to any episode in the roadmap.
     """
     chapter_timestamps = {}
     current_time = 0.0
@@ -147,44 +216,62 @@ def generate_youtube_metadata(ep_data: dict, scene_plan: list, output_path: str)
             chapter_timestamps[ch_idx] = f"{m:02d}:{s:02d}"
         current_time += float(scene.get("duration", 5.0))
 
-    CHAPTER_TITLES = {
-        1: "The Invisible Fraud",
-        2: "The Evolutionary Wire",
-        3: "The Mechanical Breakdown",
-        4: "The Catastrophe (When Reality Collapses)",
-        5: "The Historic Experiment ($20 vs $1)",
-        6: "The Meras Antidote: Cognitive Transcendence"
-    }
+    # Map dynamic chapter titles
+    chapter_titles_map = {}
+    if chapters:
+        for ch in chapters:
+            c_idx = ch.get("chapter_index")
+            c_title = ch.get("chapter_title")
+            if c_idx and c_title:
+                chapter_titles_map[c_idx] = c_title
 
     chapters_str = []
     for idx in sorted(chapter_timestamps.keys()):
-        ch_title = CHAPTER_TITLES.get(idx, f"Chapter {idx}")
+        ch_title = chapter_titles_map.get(idx, f"Chapter {idx}")
         ts = chapter_timestamps[idx]
         chapters_str.append(f"{ts} - {ch_title}")
+
+    # Dynamic or fallback metadata content
+    title_options = []
+    seo_desc = ""
+    tags_list = []
+    if metadata_info:
+        title_options = metadata_info.get("title_options", [])
+        seo_desc = metadata_info.get("seo_description", "")
+        tags_list = metadata_info.get("tags", [])
+
+    if not title_options:
+        t_base = ep_data.get("title", "Episode")
+        title_options = [
+            f"{t_base} (The Hidden Science Explained)",
+            f"The Real Reason We Struggle With {t_base.split()[-1]}",
+            f"How Your Brain Distorts {t_base.split()[-1]}"
+        ]
+    if not seo_desc:
+        seo_desc = ep_data.get("curiosity_logline", "A deep dive into behavioral psychology and neuroscience.")
+    if not tags_list:
+        tags_list = ["behavioral psychology", "neuroscience", "cognitive science", "meras", "kurzgesagt style"]
+
+    titles_formatted = "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(title_options))
+    tags_formatted = ", ".join(tags_list)
 
     content = f"""======================================================================
 MERAS | مِراس - YOUTUBE METADATA FOR EPISODE {ep_data.get('episode_number', 1):02d}
 ======================================================================
 
 🎯 HIGH-CTR TITLE OPTIONS:
-1. Why Your Brain Loves Being Lied To (Cognitive Dissonance Explained)
-2. The Disturbing Reason You Can Never Admit You're Wrong
-3. Why Your Mind Rewrites Reality To Defend Your Ego
+{titles_formatted}
 
 ----------------------------------------------------------------------
 📝 SEO VIDEO DESCRIPTION:
-You believe you are an honest, rational person. But right now, inside your skull, your brain is actively lying to you.
-
-In 1957, Stanford psychologist Leon Festinger uncovered an unsettling flaw in human wiring called Cognitive Dissonance. When our actions clash with our deeply held beliefs, the brain experiences acute psychological pain. Instead of admitting error, your prefrontal cortex rewrites memory, inventing bulletproof justifications to protect your self-worth.
-
-In this episode of Meras | مِراس, we engineer the hidden mechanics of human self-deception: why smart people cling to doomed choices, how a historic 1-dollar experiment revealed our internal machinery, and how you can disarm the rationalization engine.
+{seo_desc}
 
 ⏱️ CHAPTERS:
 {chr(10).join(chapters_str)}
 
 ----------------------------------------------------------------------
 🏷️ TAGS:
-behavioral psychology, cognitive dissonance, leon festinger, self justification, human psychology, cognitive bias, ego defense mechanism, psychology explained, neuroscience, rationalization, why we lie to ourselves, meras, kurzgesagt style, educational animation, 1 dollar experiment
+{tags_formatted}
 
 #Psychology #CognitiveScience #Brain #Meras #BehavioralMechanics #Neuroscience
 ======================================================================
@@ -192,6 +279,7 @@ behavioral psychology, cognitive dissonance, leon festinger, self justification,
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"[Metadata] Generated YouTube metadata -> {output_path}")
+
 
 def run_production_pipeline(
     episode_num: int = 1,
@@ -239,26 +327,26 @@ def run_production_pipeline(
     sys.stderr = UnbufferedTeeLogger(live_log, sys.__stderr__)
     print(f"[Pipeline] Streaming unbuffered live log -> {live_log}")
 
-    # Ensure procedural soft SFX suite exists
+    # Ensure procedural soft SFX suite and verify system dependencies
     sfx_dir = STUDIO_ROOT / "assets" / "sfx"
     ambient_file = sfx_dir / "ambient_bed.wav"
-    if not ambient_file.exists():
-        print("[Pipeline] Synthesizing procedural soft SFX assets...")
-        build_all_sfx(str(sfx_dir))
+    run_preflight_checks(sfx_dir)
 
     # STAGE 1: VOICE ENGINE & WHISPER ALIGNMENT
     print("\n" + "-"*50)
-    print("🎙️ STAGE 1: SIGNATURE YOUTHFUL VOICE SYNTHESIS (Andrew, rate=+5%, pitch=+1%)")
+    print("🎙️ STAGE 1: SIGNATURE YOUTHFUL VOICE SYNTHESIS (Andrew, rate=+2%, pitch=0%)")
     print("-"*50)
 
     sample_sentences = []
+    short_headline = ep_data.get("hook_3_words", "MERAS STUDIO")
+    metadata_info = None
+
     if is_verification:
         script_text, verification_scenes = generate_verification_script()
         chapters = []
+        short_headline = "THE 1957 DISCOVERY"
         voice_base_name = f"ep{episode_num:02d}_verif"
     elif sample_duration:
-        # Authentic 40-second slice of Episode 1 exhibiting all 5 compositional layouts
-        # Zero-second hook, fact precision (1957 theory vs 1959 experiment), non-editorializing labels
         sample_sentences = [
             ("Right now, deep inside your skull, you are actively believing a lie.", "MACRO_CLOSEUP", "macro_closeup", "The Invisible Fraud", "Neural Telemetry"),
             ("Not because you are gullible or uneducated, but because your brain would rather dismantle reality itself than admit you made a single mistake.", "HUMAN_SILHOUETTE_SCENE", "human_silhouette", "Ego Defense Shield", "Internal Conflict"),
@@ -271,9 +359,15 @@ def run_production_pipeline(
         ]
         script_text = " ".join(s[0] for s in sample_sentences)
         chapters = []
+        short_headline = "WHY YOUR BRAIN LIES"
         voice_base_name = f"ep{episode_num:02d}_sample_{int(sample_duration)}s"
     else:
-        script_text, chapters = generate_full_episode_script(ep_data)
+        # Dynamic documentary package (Gemini 2.5 Flash with Algorithmic Director fallback)
+        dynamic_package = produce_dynamic_episode(episode_num)
+        chapters = dynamic_package.get("chapters", [])
+        script_text = " ".join(c["text"] for c in chapters)
+        short_headline = dynamic_package.get("short_headline", ep_data.get("hook_3_words", "MERAS STUDIO"))
+        metadata_info = dynamic_package.get("youtube_metadata")
         voice_base_name = f"ep{episode_num:02d}_master"
 
     voice_wav, alignment_json = generate_voice(
@@ -281,8 +375,8 @@ def run_production_pipeline(
         output_dir=str(temp_dir),
         base_name=voice_base_name,
         voice_name="en-US-AndrewMultilingualNeural",
-        rate="+5%",
-        pitch="+1%"
+        rate="+2%",
+        pitch="0%"
     )
 
     with open(alignment_json, "r", encoding="utf-8") as f:
@@ -297,7 +391,7 @@ def run_production_pipeline(
     print("🎨 STAGE 2: EXACT WORD-TIMESTAMP SCENE ALIGNMENT (Zero Cut-off Guarantee)")
     print("-"*50)
 
-    # Tight 1.2s Outro Buffer (Fix 5: Zero dead air after final spoken word)
+    # Tight 1.2s Outro Buffer (Zero dead air after final spoken word)
     outro_buffer = 1.2
     total_timeline_target = round(voice_dur + outro_buffer, 2)
 
@@ -405,11 +499,11 @@ def run_production_pipeline(
     )
 
     metadata_path = str(ep_out_dir / "youtube_metadata.txt")
-    generate_youtube_metadata(ep_data, scene_plan, metadata_path)
+    generate_youtube_metadata(ep_data, scene_plan, metadata_path, chapters=chapters, metadata_info=metadata_info)
 
     short_path = str(ep_out_dir / "short_video.mp4")
     short_dur = min(60.0, get_media_duration(final_video_path))
-    generate_vertical_short(final_video_path, short_path, duration=short_dur)
+    generate_vertical_short(final_video_path, short_path, duration=short_dur, headline=short_headline)
 
     # Save scene plan and voice alignment to output directory
     shutil.copyfile(str(scene_plan_file), str(ep_out_dir / "scene_plan.json"))
@@ -420,7 +514,6 @@ def run_production_pipeline(
         test_fluid_clip = str(ep_out_dir / "test_fluid.mp4")
         shutil.copyfile(final_video_path, test_fluid_clip)
         shutil.copyfile(final_video_path, str(STUDIO_ROOT / "output" / "test_fluid.mp4"))
-        # Also mirror test_40s.mp4 for legacy references
         shutil.copyfile(final_video_path, str(ep_out_dir / "test_40s.mp4"))
         print(f"✓ Verification Test Clip saved -> {test_fluid_clip}")
     elif sample_duration:
@@ -429,7 +522,6 @@ def run_production_pipeline(
         sample_path_root = STUDIO_ROOT / "output" / sample_filename
         shutil.copyfile(final_video_path, str(sample_path_out))
         shutil.copyfile(final_video_path, str(sample_path_root))
-        # Also copy with zero-padded ep name if different
         alt_sample_name = f"sample_ep{episode_num:02d}_{int(sample_duration)}s.mp4"
         if alt_sample_name != sample_filename:
             shutil.copyfile(final_video_path, str(ep_out_dir / alt_sample_name))
@@ -471,10 +563,11 @@ def run_production_pipeline(
         "alignment": alignment_json
     }
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Meras Studio Vector Animation Production Pipeline")
     parser.add_argument("--episode", type=int, default=1, help="Episode number (1-30)")
-    parser.add_argument("--verify", action="store_true", help="Run 30-second broadcast verification test")
+    parser.add_argument("--verify", action="store_true", help="Run 25-second broadcast verification test")
     parser.add_argument("--test", action="store_true", help="Alias for --verify")
     parser.add_argument("--sample", type=float, default=None, help="Render authentic broadcast sample of specified duration in seconds (e.g. 40)")
     parser.add_argument("--fps", type=int, default=30, help="Framerate (default: 30)")

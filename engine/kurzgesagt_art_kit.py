@@ -29,13 +29,31 @@ try:
 except ImportError:
     from voice_engine import sanitize_display_and_tts_text
 
-# Embedded Local GSAP Engine for 100% deterministic, offline 60fps rendering
+import base64
+
+# Critical Engine Asset Verification: Offline Local GSAP Engine
 GSAP_LOCAL_PATH = STUDIO_ROOT / "assets" / "gsap.min.js"
-if GSAP_LOCAL_PATH.exists():
-    with open(GSAP_LOCAL_PATH, "r", encoding="utf-8") as f:
-        GSAP_INLINE_SCRIPT = f.read()
-else:
-    GSAP_INLINE_SCRIPT = "console.warn('GSAP local not found, using fallback CDN');"
+if not GSAP_LOCAL_PATH.exists():
+    raise RuntimeError(f"CRITICAL: Local GSAP engine missing at {GSAP_LOCAL_PATH}! Headless motion renderer cannot run without offline GSAP.")
+with open(GSAP_LOCAL_PATH, "r", encoding="utf-8") as f:
+    GSAP_INLINE_SCRIPT = f.read()
+if len(GSAP_INLINE_SCRIPT.strip()) < 1000:
+    raise RuntimeError(f"CRITICAL: Local GSAP engine file at {GSAP_LOCAL_PATH} is empty or corrupted!")
+
+# Critical Font Embedding: Embed Montserrat-Bold and Inter-Regular as base64 data URIs
+MONTSERRAT_PATH = STUDIO_ROOT / "assets" / "fonts" / "Montserrat-Bold.ttf"
+INTER_PATH = STUDIO_ROOT / "assets" / "fonts" / "Inter-Regular.woff2"
+
+if not MONTSERRAT_PATH.exists():
+    raise RuntimeError(f"CRITICAL: Montserrat-Bold.ttf font missing at {MONTSERRAT_PATH}!")
+if not INTER_PATH.exists():
+    raise RuntimeError(f"CRITICAL: Inter-Regular.woff2 font missing at {INTER_PATH}!")
+
+with open(MONTSERRAT_PATH, "rb") as f:
+    MONTSERRAT_B64 = base64.b64encode(f.read()).decode("ascii")
+
+with open(INTER_PATH, "rb") as f:
+    INTER_B64 = base64.b64encode(f.read()).decode("ascii")
 
 # 6 Dynamic Chapter Palettes
 PALETTES = {
@@ -1667,17 +1685,46 @@ def build_scene_html(
         subtitle_overlay_svg = sub_svg
         gsap_timings.append(sub_gsap)
 
-    # Master Continuous Camera Motion: 0.35s fluid entry with continuous momentum (Zero blank gap)
-    camera_motion = f"""
-        // 1. Entrance Transition (0.0s - 0.35s): smooth dynamic zoom-in from 0.96 to 1.0 (Zero blank gap)
-        tl.fromTo('#scene-stage',
-            {{ scale: 0.96, opacity: 1, y: 8, transformOrigin: '960px 540px' }},
-            {{ scale: 1.0, opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', transformOrigin: '960px 540px' }}, 0);
+    # Dynamic Varied Camera Presets: push_in, pull_out, pan_right, pan_left
+    cam_preset_idx = abs(hash(title + str(duration))) % 4
+    if cam_preset_idx == 0:
+        # Subtle slow push-in (zoom from 0.98 to 1.05)
+        camera_motion = f"""
+            tl.fromTo('#scene-stage',
+                {{ scale: 0.98, opacity: 1, y: 8, transformOrigin: '960px 540px' }},
+                {{ scale: 1.0, opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', transformOrigin: '960px 540px' }}, 0);
+            tl.to('#scene-stage',
+                {{ scale: 1.05, y: -6, duration: Math.max(0.1, {duration} - 0.35), ease: 'sine.inOut', transformOrigin: '960px 540px' }}, 0.35);
+        """
+    elif cam_preset_idx == 1:
+        # Subtle slow pull-out (zoom from 1.04 down to 0.99)
+        camera_motion = f"""
+            tl.fromTo('#scene-stage',
+                {{ scale: 1.04, opacity: 1, y: -6, transformOrigin: '960px 540px' }},
+                {{ scale: 1.02, opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', transformOrigin: '960px 540px' }}, 0);
+            tl.to('#scene-stage',
+                {{ scale: 0.99, y: 6, duration: Math.max(0.1, {duration} - 0.35), ease: 'sine.inOut', transformOrigin: '960px 540px' }}, 0.35);
+        """
+    elif cam_preset_idx == 2:
+        # Subtle gentle pan right
+        camera_motion = f"""
+            tl.fromTo('#scene-stage',
+                {{ scale: 1.02, opacity: 1, x: -16, transformOrigin: '960px 540px' }},
+                {{ scale: 1.02, opacity: 1, x: 0, duration: 0.35, ease: 'power3.out', transformOrigin: '960px 540px' }}, 0);
+            tl.to('#scene-stage',
+                {{ scale: 1.04, x: 18, duration: Math.max(0.1, {duration} - 0.35), ease: 'sine.inOut', transformOrigin: '960px 540px' }}, 0.35);
+        """
+    else:
+        # Subtle gentle pan left
+        camera_motion = f"""
+            tl.fromTo('#scene-stage',
+                {{ scale: 1.02, opacity: 1, x: 16, transformOrigin: '960px 540px' }},
+                {{ scale: 1.02, opacity: 1, x: 0, duration: 0.35, ease: 'power3.out', transformOrigin: '960px 540px' }}, 0);
+            tl.to('#scene-stage',
+                {{ scale: 1.04, x: -18, duration: Math.max(0.1, {duration} - 0.35), ease: 'sine.inOut', transformOrigin: '960px 540px' }}, 0.35);
+        """
 
-        // 2. Middle & Exit Continuous Float: gentle drift from 1.0 to 1.05 right up to the cut
-        tl.to('#scene-stage',
-            {{ scale: 1.05, duration: Math.max(0.1, {duration} - 0.35), ease: 'sine.inOut', transformOrigin: '960px 540px' }}, 0.35);
-
+    camera_motion += f"""
         // Background Beams and Parallax Dust Drift
         tl.fromTo('#bg-light-beams', {{ x: -20 }}, {{ x: 20, duration: {duration}, ease: 'sine.inOut' }}, 0);
         tl.to('.parallax-p1', {{ duration: {duration}, x: -60, ease: 'none' }}, 0);
@@ -1708,6 +1755,18 @@ def build_scene_html(
     {GSAP_INLINE_SCRIPT}
     </script>
     <style>
+        @font-face {{
+            font-family: 'Montserrat';
+            font-weight: 700 900;
+            font-style: normal;
+            src: url('data:font/truetype;charset=utf-8;base64,{MONTSERRAT_B64}') format('truetype');
+        }}
+        @font-face {{
+            font-family: 'Inter';
+            font-weight: 400 500;
+            font-style: normal;
+            src: url('data:font/woff2;charset=utf-8;base64,{INTER_B64}') format('woff2');
+        }}
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body, html {{
             width: 100%;

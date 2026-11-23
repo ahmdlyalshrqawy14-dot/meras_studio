@@ -23,8 +23,8 @@ AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "").strip()
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "").strip()
 
 DEFAULT_VOICE = "en-US-AndrewMultilingualNeural"
-DEFAULT_RATE = "+5%"
-DEFAULT_PITCH = "+1%"
+DEFAULT_RATE = "+2%"
+DEFAULT_PITCH = "0%"
 
 # High-impact psychological hooks for expressive emphasis
 AUTO_EMPHASIS_HOOKS = [
@@ -67,6 +67,9 @@ def sanitize_display_and_tts_text(text: str) -> str:
     
     # Strip literal spoken symbol names that might have been typed out
     t = re.sub(r'\b(asterisk|bullet point|hashtag)\b', '', t, flags=re.IGNORECASE)
+    
+    # Strip emojis and pictographs
+    t = re.sub(r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]', '', t)
     
     # Normalize excess spaces and clean lines
     t = re.sub(r'[ \t]+', ' ', t)
@@ -211,33 +214,36 @@ def synthesize_azure_edge(
             os.remove(temp_mp3)
     return False
 
-def synthesize_fallback(text: str, wav_path: str):
-    """Fallback local speech synthesis."""
-    print(f"[VoiceEngine] Falling back to local speech synthesis...")
+def synthesize_fallback(text: str, wav_path: str, voice_name: str = DEFAULT_VOICE) -> bool:
+    """Cross-platform local/fallback speech synthesis using edge-tts with XML/SSML tag stripping."""
+    import asyncio
+    import edge_tts
+    print(f"[VoiceEngine] Running cross-platform Edge-TTS fallback...")
     clean_text = re.sub(r'<[^>]+>', ' ', text)
-    clean_text = clean_text.replace("'", "''").strip()
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
     
-    ps_cmd = f"""
-    Add-Type -AssemblyName System.Speech;
-    $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer;
-    $synth.Rate = 1;
-    $synth.SetOutputToWaveFile('{wav_path}');
-    $synth.Speak('{clean_text}');
-    $synth.Dispose();
-    """
-    creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
-    res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, creationflags=creationflags)
-    if res.returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 0:
-        tmp_converted = wav_path + ".tmp.wav"
-        subprocess.run([
-            "ffmpeg", "-y", "-i", wav_path,
-            "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le",
-            tmp_converted
-        ], capture_output=True, creationflags=creationflags)
-        if os.path.exists(tmp_converted):
-            os.replace(tmp_converted, wav_path)
-        print(f"[VoiceEngine] Local fallback generated -> {wav_path}")
-        return True
+    temp_mp3 = wav_path + ".fallback.mp3"
+    async def _run():
+        comm = edge_tts.Communicate(clean_text, voice=voice_name)
+        await comm.save(temp_mp3)
+
+    try:
+        asyncio.run(_run())
+        if os.path.exists(temp_mp3) and os.path.getsize(temp_mp3) > 0:
+            creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
+            subprocess.run([
+                "ffmpeg", "-y", "-i", temp_mp3,
+                "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le",
+                wav_path
+            ], check=True, capture_output=True, creationflags=creationflags)
+            if os.path.exists(temp_mp3):
+                os.remove(temp_mp3)
+            print(f"[VoiceEngine] Cross-platform fallback audio generated -> {wav_path}")
+            return True
+    except Exception as e:
+        print(f"[VoiceEngine] Cross-platform fallback error: {e}")
+        if os.path.exists(temp_mp3):
+            os.remove(temp_mp3)
     return False
 
 def normalize_transcription_text(text: str) -> str:
@@ -252,7 +258,7 @@ def normalize_transcription_text(text: str) -> str:
     normalized = re.sub(r'\b(they come to my eyes|vetcom to meh eyes)\b', 'Welcome to Meras', normalized, flags=re.IGNORECASE)
     return normalized
 
-def extract_word_timestamps(wav_path: str, alignment_path: str, model_size: str = "tiny.en") -> dict:
+def extract_word_timestamps(wav_path: str, alignment_path: str, model_size: str = "base.en") -> dict:
     """
     Extracts high-precision word-level and segment-level timestamps using Faster-Whisper.
     Normalizes brand name occurrences back to 'Meras'.
@@ -326,9 +332,15 @@ def generate_voice(
     wav_path = os.path.join(output_dir, f"{base_name}.wav")
     alignment_path = os.path.join(output_dir, f"{base_name}_alignment.json")
     
-    if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000 and os.path.exists(alignment_path) and os.path.getsize(alignment_path) > 100:
-        print(f"[VoiceEngine] ⏭️ Checkpoint resume: using existing {wav_path} and {alignment_path}")
-        return wav_path, alignment_path
+    if os.path.exists(wav_path) and os.path.exists(alignment_path):
+        try:
+            from compositor import get_media_duration
+            probed_dur = get_media_duration(wav_path)
+        except Exception:
+            probed_dur = 0.0
+        if probed_dur > 1.0 and os.path.getsize(alignment_path) > 100:
+            print(f"[VoiceEngine] ⏭️ Checkpoint resume: using existing verified audio {wav_path} ({probed_dur:.2f}s) and alignment.")
+            return wav_path, alignment_path
 
     sanitized_text = sanitize_display_and_tts_text(text)
     assert "*" not in sanitized_text, f"Unsanitized asterisk in text before TTS: {sanitized_text[:100]}"

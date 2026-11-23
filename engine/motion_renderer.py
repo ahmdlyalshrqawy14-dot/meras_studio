@@ -131,12 +131,14 @@ def render_scene_clip_deterministic(
     else:
         render_duration = round(target_duration, 3)
 
-    # Checkpoint Resume Check
-    if os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 30000:
+    # Checkpoint Resume Check: Validate stream integrity and expected duration via ffprobe
+    if os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 10000:
         existing_dur = get_media_duration(output_mp4)
-        if existing_dur >= (render_duration - 0.15):
-            print(f"[MotionRenderer] ⏭️ Checkpoint resume: {scene_id} already rendered ({existing_dur:.2f}s). Skipping.")
+        if abs(existing_dur - render_duration) <= 0.25:
+            print(f"[MotionRenderer] ⏭️ Checkpoint resume: {scene_id} verified valid ({existing_dur:.2f}s vs expected {render_duration:.2f}s). Skipping.")
             return output_mp4
+        else:
+            print(f"[MotionRenderer] ⚠️ Corrupt or mismatched checkpoint detected for {scene_id} ({existing_dur:.2f}s vs expected {render_duration:.2f}s). Re-rendering.")
 
     set_low_cpu_priority()
 
@@ -296,6 +298,7 @@ def render_scene_plan(
     rendered_clips = [None] * total_scenes
 
     def _execute_task(task):
+        import gc
         idx = task["idx"]
         scene = task["scene"]
         out_clip = task["output_clip"]
@@ -310,6 +313,7 @@ def render_scene_plan(
             overlap_sec=overlap_sec,
             is_last_scene=is_last
         )
+        gc.collect()
         return idx, clip_path
 
     if num_workers > 1:

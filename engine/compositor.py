@@ -110,6 +110,74 @@ def adjust_foley_cues_for_speech(
         })
     return adjusted
 
+def ensure_48k_stereo(data: Any, sr: int, target_sr: int = 48000) -> Any:
+    """
+    Guarantees audio array is float32 stereo at 48000Hz.
+    Prevents sample-rate mismatches from distorting or crashing the NumPy mix.
+    """
+    import numpy as np
+    from scipy.signal import resample_poly
+    import math
+
+    # Convert dtype to float32 [-1.0, 1.0]
+    if data.dtype == np.int16:
+        float_data = data.astype(np.float32) / 32768.0
+    elif data.dtype == np.int32:
+        float_data = data.astype(np.float32) / 2147483648.0
+    else:
+        float_data = data.astype(np.float32)
+
+    # Ensure 2 channels (Stereo)
+    if float_data.ndim == 1:
+        float_data = np.column_stack((float_data, float_data))
+    elif float_data.shape[1] == 1:
+        float_data = np.column_stack((float_data[:, 0], float_data[:, 0]))
+
+    # Resample if sample rate differs from target_sr
+    if sr != target_sr and len(float_data) > 0:
+        gcd = math.gcd(int(sr), int(target_sr))
+        up = target_sr // gcd
+        down = sr // gcd
+        float_data = resample_poly(float_data, up, down, axis=0).astype(np.float32)
+
+    return float_data
+
+def loop_audio_crossfade(audio_stereo: Any, target_samples: int, crossfade_samples: int = 72000) -> Any:
+    """
+    Loops a stereo audio buffer until target_samples is reached,
+    applying a smooth crossfade of crossfade_samples (e.g. 1.5s at 48kHz = 72,000 samples)
+    between successive repetitions to eliminate boundary clicks and pops.
+    """
+    import numpy as np
+
+    clip_len = len(audio_stereo)
+    if clip_len == 0:
+        return np.zeros((target_samples, 2), dtype=np.float32)
+    if clip_len >= target_samples:
+        return audio_stereo[:target_samples]
+
+    fade_len = min(crossfade_samples, clip_len // 4)
+    fade_out = np.linspace(1.0, 0.0, fade_len, dtype=np.float32).reshape(-1, 1)
+    fade_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32).reshape(-1, 1)
+
+    result = np.zeros((target_samples + clip_len, 2), dtype=np.float32)
+    cur_pos = 0
+
+    # Place first repetition
+    result[cur_pos : cur_pos + clip_len] += audio_stereo
+    cur_pos += clip_len - fade_len
+
+    while cur_pos < target_samples:
+        # Crossfade overlap at boundary
+        result[cur_pos : cur_pos + fade_len] *= fade_out
+        result[cur_pos : cur_pos + fade_len] += audio_stereo[:fade_len] * fade_in
+        # Remainder of the clip
+        rem_len = clip_len - fade_len
+        result[cur_pos + fade_len : cur_pos + clip_len] += audio_stereo[fade_len:clip_len]
+        cur_pos += clip_len - fade_len
+
+    return result[:target_samples]
+
 def mix_master_audio_numpy(
     voice_path: str,
     ambient_path: str,
@@ -121,65 +189,38 @@ def mix_master_audio_numpy(
 ) -> str:
     """
     Procedural audio mixing using NumPy & SciPy:
-    - 48kHz voiceover PCM (main priority, vol=1.0)
+    - 48kHz stereo voiceover PCM (main priority, vol=1.0)
     - Dynamic continuous ambient bed:
-      Baseline -24dB, swelling to -20dB during high-tension chapters (30%-70% of duration),
-      with smooth 2.0s fade-in at start and 2.0s fade-out at end.
-    - Soft Foley SFX (-22dB) with speech collision avoidance (±150ms shift).
+      Resampled to 48kHz stereo with smooth 1.5s crossfade looping (zero clicks),
+      baseline -24dB swelling to -20dB during conflict chapters, with 2.0s fade in/out.
+    - Soft Foley SFX (-22dB, 48kHz) with speech collision avoidance (±150ms shift).
     """
     import numpy as np
     from scipy.io import wavfile
 
-    # 1. Load voiceover audio
-    v_sr, v_data = wavfile.read(voice_path)
-    if v_data.dtype == np.int16:
-        v_float = v_data.astype(np.float32) / 32768.0
-    elif v_data.dtype == np.int32:
-        v_float = v_data.astype(np.float32) / 2147483648.0
-    else:
-        v_float = v_data.astype(np.float32)
-    
-    if len(v_float.shape) > 1:
-        v_float = v_float.mean(axis=1)
+    TARGET_SR = 48000
 
-    voice_samples = len(v_float)
-    total_samples = max(voice_samples, int(total_duration * v_sr))
+    # 1. Load voiceover and resample to 48kHz stereo
+    v_sr, v_data = wavfile.read(voice_path)
+    v_stereo = ensure_48k_stereo(v_data, v_sr, TARGET_SR)
+
+    voice_samples = len(v_stereo)
+    total_samples = max(voice_samples, int(total_duration * TARGET_SR))
     
     # 2-Channel Broadcast Stereo Master Audio Buffer
     master_buffer = np.zeros((total_samples, 2), dtype=np.float32)
-    # Centered voice track with slight headroom (-0.5dB)
-    master_buffer[:voice_samples, 0] += v_float * 0.95
-    master_buffer[:voice_samples, 1] += v_float * 0.95
+    master_buffer[:voice_samples] += v_stereo * 0.95
 
-    # 2. Continuous ambient bed in Dynamic Wide Stereo
+    # 2. Continuous ambient bed with 1.5s crossfade looping
     if os.path.exists(ambient_path):
         a_sr, a_data = wavfile.read(ambient_path)
-        if a_data.dtype == np.int16:
-            a_float = a_data.astype(np.float32) / 32768.0
-        elif a_data.dtype == np.int32:
-            a_float = a_data.astype(np.float32) / 2147483648.0
-        else:
-            a_float = a_data.astype(np.float32)
-            
-        if len(a_float.shape) > 1 and a_float.shape[1] >= 2:
-            a_left = a_float[:, 0]
-            a_right = a_float[:, 1]
-        else:
-            if len(a_float.shape) > 1:
-                a_float = a_float.mean(axis=1)
-            # Decorrelated wide stereo field: right channel receives 18ms micro-phase offset
-            delay_samples = int(0.018 * v_sr)
-            a_left = a_float
-            a_right = np.roll(a_float, delay_samples)
-
-        if len(a_left) > 0:
-            repeats = int(np.ceil(total_samples / len(a_left)))
-            tiled_l = np.tile(a_left, repeats)[:total_samples]
-            tiled_r = np.tile(a_right, repeats)[:total_samples]
+        a_stereo = ensure_48k_stereo(a_data, a_sr, TARGET_SR)
+        
+        if len(a_stereo) > 0:
+            fade_samples = int(1.5 * TARGET_SR)
+            looped_ambient = loop_audio_crossfade(a_stereo, total_samples, crossfade_samples=fade_samples)
             
             # Dynamic Modulation Envelope across timeline:
-            # - Baseline: -24dB (~0.0631)
-            # - Swell during conflict (30% to 70%): rises to -20dB (~0.1000)
             vol_base = 10.0 ** (-24.0 / 20.0)    # ~0.0631
             vol_swell = 10.0 ** (-20.0 / 20.0)   # ~0.1000
             
@@ -191,30 +232,29 @@ def mix_master_audio_numpy(
             idx_peak_end = int(total_samples * 0.68)
             idx_end_swell = int(total_samples * 0.78)
             
-            if total_samples > 48000 * 10:
+            if total_samples > TARGET_SR * 10:
                 ramp_up = np.linspace(vol_base, vol_swell, idx_peak_start - idx_start_swell, dtype=np.float32)
                 ramp_down = np.linspace(vol_swell, vol_base, idx_end_swell - idx_peak_end, dtype=np.float32)
                 vol_curve[idx_start_swell:idx_peak_start] = ramp_up
                 vol_curve[idx_peak_start:idx_peak_end] = vol_swell
                 vol_curve[idx_peak_end:idx_end_swell] = ramp_down
             
-            tiled_l *= vol_curve
-            tiled_r *= vol_curve
+            looped_ambient[:, 0] *= vol_curve
+            looped_ambient[:, 1] *= vol_curve
 
             # Smooth 2.0s fade in and 2.0s fade out
-            fade_len = int(2.0 * v_sr)
+            fade_len = int(2.0 * TARGET_SR)
             if total_samples > fade_len * 2:
                 fade_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
                 fade_out = np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
-                tiled_l[:fade_len] *= fade_in
-                tiled_l[-fade_len:] *= fade_out
-                tiled_r[:fade_len] *= fade_in
-                tiled_r[-fade_len:] *= fade_out
+                looped_ambient[:fade_len, 0] *= fade_in
+                looped_ambient[-fade_len:, 0] *= fade_out
+                looped_ambient[:fade_len, 1] *= fade_in
+                looped_ambient[-fade_len:, 1] *= fade_out
                 
-            master_buffer[:, 0] += tiled_l
-            master_buffer[:, 1] += tiled_r
+            master_buffer += looped_ambient
 
-    # 3. Soft Foley Cues at -22dB with Spatial Panning
+    # 3. Soft Foley Cues at -22dB with Spatial Panning & 48kHz Resampling
     vol_sfx = 10.0 ** (-22.0 / 20.0)
     clean_cues = adjust_foley_cues_for_speech(sfx_cues, words_alignment, total_duration)
 
@@ -241,20 +281,13 @@ def mix_master_audio_numpy(
 
         if actual_filename not in sfx_cache:
             s_sr, s_data = wavfile.read(sfx_file)
-            if s_data.dtype == np.int16:
-                s_float = s_data.astype(np.float32) / 32768.0
-            else:
-                s_float = s_data.astype(np.float32)
-            if len(s_float.shape) > 1:
-                s_float = s_float.mean(axis=1)
-            sfx_cache[actual_filename] = s_float * vol_sfx
+            s_stereo = ensure_48k_stereo(s_data, s_sr, TARGET_SR)
+            sfx_cache[actual_filename] = s_stereo * vol_sfx
 
         s_sample = sfx_cache[actual_filename]
         t_sec = float(cue.get("time", 0.0))
-        start_idx = int(t_sec * v_sr)
+        start_idx = int(t_sec * TARGET_SR)
         
-        # Spatial Panning based on cue type:
-        # whoosh: slight left-to-right sweep, chime: slightly right (+0.2), pop: slightly left (-0.2), sub_drop: centered (0.0)
         pan_left = 1.0
         pan_right = 1.0
         if "chime" in clean_name or "blip" in clean_name:
@@ -267,8 +300,8 @@ def mix_master_audio_numpy(
         if start_idx < total_samples:
             end_idx = min(total_samples, start_idx + len(s_sample))
             chunk_len = end_idx - start_idx
-            master_buffer[start_idx:end_idx, 0] += s_sample[:chunk_len] * pan_left
-            master_buffer[start_idx:end_idx, 1] += s_sample[:chunk_len] * pan_right
+            master_buffer[start_idx:end_idx, 0] += s_sample[:chunk_len, 0] * pan_left
+            master_buffer[start_idx:end_idx, 1] += s_sample[:chunk_len, 1] * pan_right
 
     # 4. Anti-clipping normalization and broadcast limiter (-0.5dB true peak)
     max_val = np.max(np.abs(master_buffer))
@@ -276,8 +309,8 @@ def mix_master_audio_numpy(
         master_buffer = (master_buffer / max_val) * 0.95
 
     out_int16 = (master_buffer * 32767.0).astype(np.int16)
-    wavfile.write(output_wav, v_sr, out_int16)
-    print(f"[Compositor] Master 2-Channel Stereo audio mixed via NumPy ({len(master_buffer)/v_sr:.2f}s) -> {output_wav}")
+    wavfile.write(output_wav, TARGET_SR, out_int16)
+    print(f"[Compositor] Master 48kHz Stereo audio mixed via NumPy ({len(master_buffer)/TARGET_SR:.2f}s) -> {output_wav}")
     return output_wav
 
 def stitch_clips_with_xfade(
@@ -288,9 +321,8 @@ def stitch_clips_with_xfade(
     creationflags: int = 0
 ) -> str:
     """
-    Stitches scene clips using zero-drift xfade.
-    If len(scene_clips) > 15, chunks them hierarchically in batches of 12-15
-    so FFmpeg never exceeds memory or command-line limits on Windows.
+    Iterative (non-deep-recursive) chunked xfade stitching.
+    Probes exact actual duration of every scene clip and chunk via ffprobe/ffmpeg.
     """
     if len(scene_clips) == 0:
         raise ValueError("No scene clips provided to stitch.")
@@ -299,23 +331,27 @@ def stitch_clips_with_xfade(
         return output_mp4
 
     CHUNK_SIZE = 12
-    if len(scene_clips) <= CHUNK_SIZE:
-        return _stitch_single_xfade_batch(scene_clips, output_mp4, transition_duration, temp_dir, creationflags)
+    current_clips = list(scene_clips)
+    round_idx = 0
 
-    # Hierarchical Chunking
-    chunk_files = []
-    num_chunks = (len(scene_clips) + CHUNK_SIZE - 1) // CHUNK_SIZE
-    print(f"[Compositor] [Hierarchical Stitching] Splitting {len(scene_clips)} clips into {num_chunks} batches of ~{CHUNK_SIZE}...")
-    
-    for c_idx in range(num_chunks):
-        batch = scene_clips[c_idx * CHUNK_SIZE : (c_idx + 1) * CHUNK_SIZE]
-        chunk_out = str(temp_dir / f"xfade_chunk_{c_idx:03d}_{len(batch)}clips.mp4")
-        _stitch_single_xfade_batch(batch, chunk_out, transition_duration, temp_dir, creationflags)
-        chunk_files.append(chunk_out)
+    while len(current_clips) > 1:
+        if len(current_clips) <= CHUNK_SIZE:
+            return _stitch_single_xfade_batch(current_clips, output_mp4, transition_duration, temp_dir, creationflags)
 
-    # Hierarchically stitch the chunks
-    print(f"[Compositor] [Hierarchical Stitching] Merging {len(chunk_files)} chunk batches into final master video...")
-    return stitch_clips_with_xfade(chunk_files, output_mp4, transition_duration, temp_dir, creationflags)
+        num_chunks = (len(current_clips) + CHUNK_SIZE - 1) // CHUNK_SIZE
+        print(f"[Compositor] [Iterative Stitching] Round {round_idx}: merging {len(current_clips)} clips into {num_chunks} batches...")
+        next_clips = []
+        for c_idx in range(num_chunks):
+            batch = current_clips[c_idx * CHUNK_SIZE : (c_idx + 1) * CHUNK_SIZE]
+            chunk_out = str(temp_dir / f"xfade_r{round_idx}_chunk_{c_idx:03d}_{len(batch)}clips.mp4")
+            _stitch_single_xfade_batch(batch, chunk_out, transition_duration, temp_dir, creationflags)
+            next_clips.append(chunk_out)
+
+        current_clips = next_clips
+        round_idx += 1
+
+    shutil.copyfile(current_clips[0], output_mp4)
+    return output_mp4
 
 
 def _stitch_single_xfade_batch(
@@ -422,6 +458,11 @@ def composite_video(
     # Automated Sync Gate (Fail-Fast): Prevent out-of-sync master export
     sync_drift = abs(stitched_dur - master_dur)
     print(f"[Compositor] [Sync Gate] Stitched Video: {stitched_dur:.2f}s | Master Target: {master_dur:.2f}s | Drift: {sync_drift:.3f}s")
+    for pct in [0.25, 0.50, 0.75, 0.95]:
+        chk_a = round(master_dur * pct, 2)
+        chk_v = round(stitched_dur * pct, 2)
+        print(f"[Compositor] [Sync Checkpoint {int(pct*100)}%] Target={chk_a:.2f}s | Video={chk_v:.2f}s | Drift={abs(chk_a - chk_v):.3f}s")
+
     if sync_drift > 1.5:
         raise RuntimeError(
             f"[Compositor] Automated Sync Gate FAILED: Stitched video ({stitched_dur:.2f}s) and target master "
@@ -441,6 +482,10 @@ def composite_video(
         words_alignment=words_alignment
     )
 
+    mixed_dur = get_media_duration(mixed_audio_wav)
+    print(f"[Compositor] Mixed Master Audio: {mixed_dur:.2f}s | Target: {master_dur:.2f}s")
+    assert abs(stitched_dur - mixed_dur) <= 1.5, f"Sync gate mismatch between stitched video ({stitched_dur}s) and mixed audio ({mixed_dur}s)"
+
     has_watermark = os.path.exists(watermark_path)
     final_cmd = [
         "ffmpeg", "-y",
@@ -451,16 +496,18 @@ def composite_video(
         final_cmd.extend(["-i", watermark_path])
     final_cmd.extend(["-i", mixed_audio_wav])
     
+    # Broadcast YouTube Loudness Normalization: -14 LUFS, -1 dBTP via loudnorm filter
     if has_watermark:
         final_cmd.extend([
-            "-filter_complex", "[0:v][1:v]overlay=W-w-40:40[v_master]",
+            "-filter_complex", "[0:v][1:v]overlay=W-w-40:40[v_master];[2:a]loudnorm=I=-14:TP=-1:LRA=11[a_master]",
             "-map", "[v_master]",
-            "-map", "2:a"
+            "-map", "[a_master]"
         ])
     else:
         final_cmd.extend([
+            "-filter_complex", "[1:a]loudnorm=I=-14:TP=-1:LRA=11[a_master]",
             "-map", "0:v",
-            "-map", "1:a"
+            "-map", "[a_master]"
         ])
         
     final_cmd.extend([
