@@ -316,16 +316,12 @@ def _stitch_single_xfade_batch(
         last_stream = out_stream
 
     xfade_filter = ";".join(filter_parts)
-    safe_base = os.path.basename(output_mp4).replace(".mp4", "")
-    filter_script_file = temp_dir / f"xfade_filter_{safe_base}.txt"
-    with open(filter_script_file, "w", encoding="utf-8") as f:
-        f.write(xfade_filter)
 
     xfade_cmd = [
         "ffmpeg", "-y",
         "-threads", "2",
         *inputs,
-        "-filter_complex_script", str(filter_script_file),
+        "-filter_complex", xfade_filter,
         "-map", last_stream,
         "-c:v", "libx264",
         "-crf", "16",
@@ -339,12 +335,6 @@ def _stitch_single_xfade_batch(
     res = subprocess.run(xfade_cmd, capture_output=True, text=True, creationflags=creationflags)
     if res.returncode != 0:
         raise RuntimeError(f"FFmpeg xfade failed for {output_mp4}: {res.stderr[-400:]}")
-
-    if filter_script_file.exists():
-        try:
-            filter_script_file.unlink()
-        except Exception:
-            pass
 
     return output_mp4
 
