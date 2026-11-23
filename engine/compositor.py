@@ -15,6 +15,7 @@ Broadcast Audio-Visual Assembly:
 import os
 import sys
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -246,6 +247,107 @@ def mix_master_audio_numpy(
     print(f"[Compositor] Master 2-Channel Stereo audio mixed via NumPy ({len(master_buffer)/v_sr:.2f}s) -> {output_wav}")
     return output_wav
 
+def stitch_clips_with_xfade(
+    scene_clips: List[str],
+    output_mp4: str,
+    transition_duration: float,
+    temp_dir: Path,
+    creationflags: int = 0
+) -> str:
+    """
+    Stitches scene clips using zero-drift xfade.
+    If len(scene_clips) > 15, chunks them hierarchically in batches of 12-15
+    so FFmpeg never exceeds memory or command-line limits on Windows.
+    """
+    if len(scene_clips) == 0:
+        raise ValueError("No scene clips provided to stitch.")
+    if len(scene_clips) == 1:
+        shutil.copyfile(scene_clips[0], output_mp4)
+        return output_mp4
+
+    CHUNK_SIZE = 12
+    if len(scene_clips) <= CHUNK_SIZE:
+        return _stitch_single_xfade_batch(scene_clips, output_mp4, transition_duration, temp_dir, creationflags)
+
+    # Hierarchical Chunking
+    chunk_files = []
+    num_chunks = (len(scene_clips) + CHUNK_SIZE - 1) // CHUNK_SIZE
+    print(f"[Compositor] [Hierarchical Stitching] Splitting {len(scene_clips)} clips into {num_chunks} batches of ~{CHUNK_SIZE}...")
+    
+    for c_idx in range(num_chunks):
+        batch = scene_clips[c_idx * CHUNK_SIZE : (c_idx + 1) * CHUNK_SIZE]
+        chunk_out = str(temp_dir / f"xfade_chunk_{c_idx:03d}_{len(batch)}clips.mp4")
+        _stitch_single_xfade_batch(batch, chunk_out, transition_duration, temp_dir, creationflags)
+        chunk_files.append(chunk_out)
+
+    # Hierarchically stitch the chunks
+    print(f"[Compositor] [Hierarchical Stitching] Merging {len(chunk_files)} chunk batches into final master video...")
+    return stitch_clips_with_xfade(chunk_files, output_mp4, transition_duration, temp_dir, creationflags)
+
+
+def _stitch_single_xfade_batch(
+    scene_clips: List[str],
+    output_mp4: str,
+    transition_duration: float,
+    temp_dir: Path,
+    creationflags: int = 0
+) -> str:
+    if len(scene_clips) == 1:
+        shutil.copyfile(scene_clips[0], output_mp4)
+        return output_mp4
+
+    clip_durations = [get_media_duration(clip) for clip in scene_clips]
+    inputs = []
+    for clip in scene_clips:
+        inputs.extend(["-i", clip])
+
+    filter_parts = []
+    last_stream = "[0:v]"
+    accum_offset = 0.0
+
+    for i in range(1, len(scene_clips)):
+        prev_target_dur = max(0.5, clip_durations[i-1] - transition_duration)
+        accum_offset += prev_target_dur
+        out_stream = f"[v_trans_{i}]" if i < len(scene_clips) - 1 else "[v_stitched]"
+        trans_type = "fade" if i % 2 == 1 else "circlecrop"
+        filter_parts.append(
+            f"{last_stream}[{i}:v]xfade=transition={trans_type}:duration={transition_duration}:offset={accum_offset:.3f}{out_stream}"
+        )
+        last_stream = out_stream
+
+    xfade_filter = ";".join(filter_parts)
+    safe_base = os.path.basename(output_mp4).replace(".mp4", "")
+    filter_script_file = temp_dir / f"xfade_filter_{safe_base}.txt"
+    with open(filter_script_file, "w", encoding="utf-8") as f:
+        f.write(xfade_filter)
+
+    xfade_cmd = [
+        "ffmpeg", "-y",
+        "-threads", "2",
+        *inputs,
+        "-filter_complex_script", str(filter_script_file),
+        "-map", last_stream,
+        "-c:v", "libx264",
+        "-crf", "16",
+        "-maxrate", "10M",
+        "-bufsize", "20M",
+        "-preset", "fast",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
+        output_mp4
+    ]
+    res = subprocess.run(xfade_cmd, capture_output=True, text=True, creationflags=creationflags)
+    if res.returncode != 0:
+        raise RuntimeError(f"FFmpeg xfade failed for {output_mp4}: {res.stderr[-400:]}")
+
+    if filter_script_file.exists():
+        try:
+            filter_script_file.unlink()
+        except Exception:
+            pass
+
+    return output_mp4
+
 def composite_video(
     scene_clips: List[str],
     voice_path: str,
@@ -273,88 +375,17 @@ def composite_video(
 
     print(f"[Compositor] Beginning composition of {len(scene_clips)} scene clips...")
 
-    # Step 1: Stitch video clips
-    stitched_video = str(temp_dir / "stitched_raw.mp4")
-    creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
-    
     # Step 1: Stitch video clips with zero-drift xfade duration compensation
     stitched_video = str(temp_dir / "stitched_raw.mp4")
     creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
-    
-    if len(scene_clips) == 1:
-        stitched_video = scene_clips[0]
-    elif transition_duration > 0.05 and len(scene_clips) <= 30:
-        # High-precision xfade cross-transitions with zero-drift compensation
-        # Every non-final clip was rendered with an exact +0.35s tail pad
-        clip_durations = [get_media_duration(clip) for clip in scene_clips]
-        inputs = []
-        for clip in scene_clips:
-            inputs.extend(["-i", clip])
-            
-        filter_parts = []
-        last_stream = "[0:v]"
-        accum_offset = 0.0
-        
-        for i in range(1, len(scene_clips)):
-            # Previous clip's intended target duration is clip_duration - transition_duration
-            prev_target_dur = max(0.5, clip_durations[i-1] - transition_duration)
-            accum_offset += prev_target_dur
-            out_stream = f"[v_trans_{i}]" if i < len(scene_clips) - 1 else "[v_stitched]"
-            trans_type = "fade" if i % 2 == 1 else "circlecrop"
-            filter_parts.append(
-                f"{last_stream}[{i}:v]xfade=transition={trans_type}:duration={transition_duration}:offset={accum_offset:.3f}{out_stream}"
-            )
-            last_stream = out_stream
 
-        xfade_filter = ";".join(filter_parts)
-        xfade_cmd = [
-            "ffmpeg", "-y",
-            "-threads", "2",
-            *inputs,
-            "-filter_complex", xfade_filter,
-            "-map", last_stream,
-            "-c:v", "libx264",
-            "-crf", "16",
-            "-maxrate", "10M",
-            "-bufsize", "20M",
-            "-preset", "fast",
-            "-pix_fmt", "yuv420p",
-            "-r", "30",
-            stitched_video
-        ]
-        print(f"[Compositor] [SafeMode: Threads: 2] Stitching {len(scene_clips)} clips with 30fps xfade ({transition_duration}s zero-drift)...")
-        res = subprocess.run(xfade_cmd, capture_output=True, text=True, creationflags=creationflags)
-        if res.returncode != 0:
-            print(f"[Compositor] xfade warning: {res.stderr[:200]}, falling back to concat demuxer...")
-            concat_list = temp_dir / "concat_list.txt"
-            with open(concat_list, "w", encoding="utf-8") as f:
-                for clip in scene_clips:
-                    f.write(f"file '{Path(clip).as_posix()}'\n")
-            concat_cmd = [
-                "ffmpeg", "-y",
-                "-threads", "2",
-                "-f", "concat", "-safe", "0",
-                "-i", str(concat_list),
-                "-c", "copy",
-                stitched_video
-            ]
-            subprocess.run(concat_cmd, check=True, creationflags=creationflags)
-    else:
-        # High-performance lossless concat demuxer
-        print(f"[Compositor] [SafeMode: Concat Demuxer] Stitching {len(scene_clips)} clips...")
-        concat_list = temp_dir / "concat_list.txt"
-        with open(concat_list, "w", encoding="utf-8") as f:
-            for clip in scene_clips:
-                f.write(f"file '{Path(clip).as_posix()}'\n")
-        concat_cmd = [
-            "ffmpeg", "-y",
-            "-threads", "2",
-            "-f", "concat", "-safe", "0",
-            "-i", str(concat_list),
-            "-c", "copy",
-            stitched_video
-        ]
-        subprocess.run(concat_cmd, check=True, creationflags=creationflags)
+    stitched_video = stitch_clips_with_xfade(
+        scene_clips=scene_clips,
+        output_mp4=stitched_video,
+        transition_duration=transition_duration,
+        temp_dir=temp_dir,
+        creationflags=creationflags
+    )
 
     # Step 2: Overlay Watermark and Mix Audio
     stitched_dur = get_media_duration(stitched_video)

@@ -61,7 +61,7 @@ def get_safe_worker_count(requested_workers: int = 2) -> int:
         except Exception:
             pass
 
-    if cores >= 4 and free_ram_gb >= 3.0:
+    if cores >= 2 and free_ram_gb >= 2.0:
         actual = min(requested_workers, 2)
         print(f"[MotionRenderer] Adaptive Safety Guard: {cores} cores, {free_ram_gb:.2f}GB RAM -> Active: {actual} workers")
         return actual

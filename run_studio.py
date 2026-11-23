@@ -74,7 +74,7 @@ def generate_vertical_short(input_video: str, output_short: str, duration: float
         "-maxrate", "10M",
         "-bufsize", "20M",
         "-preset", "fast",
-        "-r", "60",
+        "-r", "30",
         "-ac", "2",
         "-c:a", "aac",
         "-b:a", "320k",
@@ -101,7 +101,7 @@ def generate_vertical_short(input_video: str, output_short: str, duration: float
             "-maxrate", "10M",
             "-bufsize", "20M",
             "-preset", "fast",
-            "-r", "60",
+            "-r", "30",
             "-ac", "2",
             "-c:a", "aac",
             "-b:a", "320k",
@@ -202,8 +202,8 @@ def run_production_pipeline(
         out_dirname = f"EP_{episode_num:02d}_sample_{int(sample_duration)}s"
         temp_dirname = f"ep{episode_num:02d}_sample_{int(sample_duration)}s_work"
     else:
-        out_dirname = f"EP_[{episode_num}]"
-        temp_dirname = f"ep{episode_num:02d}_work"
+        out_dirname = f"EP_{episode_num}"
+        temp_dirname = f"ep{episode_num}_work"
 
     ep_out_dir = STUDIO_ROOT / "output" / out_dirname
     temp_dir = STUDIO_ROOT / "temp" / temp_dirname
@@ -409,12 +409,17 @@ def run_production_pipeline(
         print(f"✓ Mirrored to -> {sample_path_root}")
 
     # Mirror for episode numbering if producing full episode
-    alt_out_dir = STUDIO_ROOT / "output" / f"EP_{episode_num:02d}"
-    if not is_verification and not sample_duration and ep_out_dir != alt_out_dir:
-        os.makedirs(alt_out_dir, exist_ok=True)
-        for item in ep_out_dir.glob("*"):
-            if item.is_file():
-                shutil.copyfile(str(item), str(alt_out_dir / item.name))
+    alt_out_dirs = [
+        STUDIO_ROOT / "output" / f"EP_{episode_num:02d}",
+        STUDIO_ROOT / "output" / f"EP_[{episode_num}]"
+    ]
+    if not is_verification and not sample_duration:
+        for a_dir in alt_out_dirs:
+            if ep_out_dir != a_dir:
+                os.makedirs(a_dir, exist_ok=True)
+                for item in ep_out_dir.glob("*"):
+                    if item.is_file():
+                        shutil.copyfile(str(item), str(a_dir / item.name))
 
     print("\n" + "="*70)
     print("✨ BROADCAST PRODUCTION COMPLETE: READY FOR YOUTUBE EXPORT")
