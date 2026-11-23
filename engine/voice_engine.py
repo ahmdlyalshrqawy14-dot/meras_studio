@@ -302,6 +302,10 @@ def generate_voice(
     wav_path = os.path.join(output_dir, f"{base_name}.wav")
     alignment_path = os.path.join(output_dir, f"{base_name}_alignment.json")
     
+    if os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000 and os.path.exists(alignment_path) and os.path.getsize(alignment_path) > 100:
+        print(f"[VoiceEngine] ⏭️ Checkpoint resume: using existing {wav_path} and {alignment_path}")
+        return wav_path, alignment_path
+
     ssml = build_ssml(text, voice_name=voice_name, rate=rate, pitch=pitch)
     
     azure_configured = (
