@@ -11,7 +11,7 @@ Broadcast-Grade Modular Vector Motion Graphics Engine:
   * Chapter 5: Emerald Green (#10B981) & Mint (#34D399)
   * Chapter 6: Celestial Gold (#FACC15) & Ultraviolet (#818CF8)
 - 2-Second Animated Chapter Title Cards
-- Sentence-Accurate Metaphors & Animated Counters (1957, 48 pegs, $20 vs $1, percentages, etc.)
+- Sentence-Accurate Dynamic Metaphors & Animated Numerical Counters
 - Strict Safe Zones: +25px safe vertical margins between titles and badges (zero collisions)
 - 3-Layer Depth Parallax & Continuous Cinematic Camera Motion (1.0x to 1.07x)
 """
@@ -22,6 +22,12 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 STUDIO_ROOT = Path(__file__).resolve().parent.parent
+
+# Shared text sanitizer for captions and display
+try:
+    from engine.voice_engine import sanitize_display_and_tts_text
+except ImportError:
+    from voice_engine import sanitize_display_and_tts_text
 
 # Embedded Local GSAP Engine for 100% deterministic, offline 60fps rendering
 GSAP_LOCAL_PATH = STUDIO_ROOT / "assets" / "gsap.min.js"
@@ -298,7 +304,7 @@ def get_safe_chapter_header(title: str, subtitle: Optional[str], chapter_index: 
 
 HIGHLIGHT_KEYWORDS = {
     "meras", "truth", "lie", "lies", "lied", "festinger", "1957", "1959",
-    "dissonance", "beliefs", "clash", "gears", "overdrive", "ego", "$20", "$1",
+    "dissonance", "beliefs", "clash", "gears", "overdrive", "ego", "incentive",
     "twenty", "dollar", "dollars", "pride", "comfort", "brain", "skull",
     "fraud", "illusion", "rationalization", "action", "actions", "boring",
     "thrilling", "conquers", "shield", "scales", "friction", "payout", "unsettling"
@@ -306,7 +312,7 @@ HIGHLIGHT_KEYWORDS = {
 
 def split_sentence_into_phrases(sentence: str) -> List[str]:
     """Splits a narration sentence into concise 3-5 word kinetic phrase chunks."""
-    clean = re.sub(r'<[^>]+>', '', sentence).strip()
+    clean = sanitize_display_and_tts_text(re.sub(r'<[^>]+>', '', sentence)).strip()
     if not clean:
         return []
     
@@ -496,27 +502,29 @@ def get_animated_counter(
     label: str,
     sub_label: str,
     p: Dict[str, str],
-    is_currency_comparison: bool = False
+    is_currency_comparison: bool = False,
+    left_metric: str = "HIGH",
+    right_metric: str = "LOW"
 ) -> tuple[str, str]:
     """
     Generates an animated numerical counter / comparison system.
-    Handles '1957', '48 PEGS', '$20 vs $1', '100,000 YEARS', '98%'.
+    Handles dynamic metrics, years, quantities, and comparative columns.
     """
-    if is_currency_comparison or "$20" in number_target:
-        # Dual column comparison ($20 vs $1)
+    if is_currency_comparison or "vs" in number_target.lower():
+        # Dual column comparison
         svg = f"""
         <g id="metaphor-counter" transform="translate(960, 520)" filter="url(#drop-shadow)">
-            <!-- Left Card: $20 Group -->
+            <!-- Left Card -->
             <g id="card-col-left" transform="translate(-240, 0)">
                 <rect x="-180" y="-190" width="360" height="380" rx="24" fill="{p['card_bg']}" stroke="#EF4444" stroke-width="3" />
                 <circle cx="0" cy="-90" r="50" fill="#EF4444" opacity="0.2" filter="url(#glow-primary)" />
-                <text x="0" y="-75" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="900" font-size="52">$20</text>
-                <text x="0" y="-15" text-anchor="middle" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="22">SUBSTANTIAL PAYOUT</text>
+                <text x="0" y="-75" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="900" font-size="44">{left_metric}</text>
+                <text x="0" y="-15" text-anchor="middle" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="22">HIGH CONDITION</text>
                 <line x1="-140" y1="15" x2="140" y2="15" stroke="#EF4444" stroke-width="1.5" opacity="0.5" />
-                <text x="0" y="55" text-anchor="middle" fill="#E2E8F0" font-family="'Inter', sans-serif" font-weight="600" font-size="19">External Justification</text>
-                <text x="0" y="90" text-anchor="middle" fill="#94A3B8" font-family="'Inter', sans-serif" font-size="18">"I lied for the money."</text>
+                <text x="0" y="55" text-anchor="middle" fill="#E2E8F0" font-family="'Inter', sans-serif" font-weight="600" font-size="19">External Signal</text>
+                <text x="0" y="90" text-anchor="middle" fill="#94A3B8" font-family="'Inter', sans-serif" font-size="18">"Sufficient Reason"</text>
                 <rect x="-140" y="122" width="280" height="38" rx="19" fill="#EF4444" opacity="0.22" />
-                <text x="0" y="146" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="800" font-size="18">ZERO DISSONANCE</text>
+                <text x="0" y="146" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="800" font-size="18">MINIMAL DISSONANCE</text>
             </g>
 
             <!-- Center VS Energy Spark -->
@@ -525,15 +533,15 @@ def get_animated_counter(
                 <text x="0" y="8" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="22">VS</text>
             </g>
 
-            <!-- Right Card: $1 Group -->
+            <!-- Right Card -->
             <g id="card-col-right" transform="translate(240, 0)">
                 <rect x="-180" y="-190" width="360" height="380" rx="24" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="3" />
                 <circle cx="0" cy="-90" r="50" fill="{p['primary']}" opacity="0.2" filter="url(#glow-primary)" />
-                <text x="0" y="-75" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="52">$1</text>
-                <text x="0" y="-15" text-anchor="middle" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="22">PITIFUL SUM</text>
+                <text x="0" y="-75" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="44">{right_metric}</text>
+                <text x="0" y="-15" text-anchor="middle" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="22">LOW CONDITION</text>
                 <line x1="-140" y1="15" x2="140" y2="15" stroke="{p['primary']}" stroke-width="1.5" opacity="0.5" />
-                <text x="0" y="55" text-anchor="middle" fill="#E2E8F0" font-family="'Inter', sans-serif" font-weight="600" font-size="19">Severe Internal Friction</text>
-                <text x="0" y="90" text-anchor="middle" fill="#94A3B8" font-family="'Inter', sans-serif" font-size="18">"I must have liked the task!"</text>
+                <text x="0" y="55" text-anchor="middle" fill="#E2E8F0" font-family="'Inter', sans-serif" font-weight="600" font-size="19">Internal Friction</text>
+                <text x="0" y="90" text-anchor="middle" fill="#94A3B8" font-family="'Inter', sans-serif" font-size="18">"Belief Must Adapt"</text>
                 <rect x="-140" y="122" width="280" height="38" rx="19" fill="{p['primary']}" opacity="0.22" />
                 <text x="0" y="146" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="18">ACUTE DISSONANCE</text>
             </g>
@@ -806,8 +814,14 @@ def get_rationalization_gears(p: Dict[str, str]) -> tuple[str, str]:
     """
     return svg, gsap
 
-def get_scales_balance_system(p: Dict[str, str]) -> tuple[str, str]:
-    """Precision vector balance scales with connected horizontal pivot beam and crisp labels."""
+def get_scales_balance_system(
+    p: Dict[str, str],
+    left_label: str = "HIGH INCENTIVE",
+    right_label: str = "LOW INCENTIVE",
+    left_val: str = "HEAVY",
+    right_val: str = "LIGHT"
+) -> tuple[str, str]:
+    """Precision vector balance scales with connected horizontal pivot beam and dynamic labels."""
     svg = f"""
     <g id="metaphor-scales" transform="translate(960, 500)" filter="url(#drop-shadow)">
         <!-- Vertical Central Stand & Base -->
@@ -820,7 +834,7 @@ def get_scales_balance_system(p: Dict[str, str]) -> tuple[str, str]:
             <rect x="-260" y="-127" width="520" height="14" rx="7" fill="url(#primary-grad)" stroke="{p['highlight']}" stroke-width="2" filter="url(#glow-primary)" />
             <line x1="-240" y1="-120" x2="240" y2="-120" stroke="{p['bg_dark']}" stroke-width="2" stroke-dasharray="8 6" opacity="0.6" />
 
-            <!-- Left Suspension Chains & Pan ($20 Group) -->
+            <!-- Left Suspension Chains & Pan -->
             <g id="pan-left" transform="translate(-240, -120)">
                 <!-- Suspension Chains connected to beam end -->
                 <line x1="0" y1="0" x2="-55" y2="130" stroke="{p['primary']}" stroke-width="2.5" />
@@ -828,13 +842,13 @@ def get_scales_balance_system(p: Dict[str, str]) -> tuple[str, str]:
                 <circle cx="0" cy="0" r="7" fill="{p['highlight']}" />
                 <!-- Pan Bowl -->
                 <path d="M -85,130 Q 0,175 85,130 Z" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="3" />
-                <!-- Weight Block ($20) -->
-                <rect x="-55" y="78" width="110" height="52" rx="10" fill="{p['bg_dark']}" stroke="#EF4444" stroke-width="2.5" />
-                <text x="0" y="114" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="900" font-size="34">$20</text>
-                <text x="0" y="156" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="21">HIGH INCENTIVE</text>
+                <!-- Left Weight Block -->
+                <rect x="-65" y="78" width="130" height="52" rx="10" fill="{p['bg_dark']}" stroke="#EF4444" stroke-width="2.5" />
+                <text x="0" y="114" text-anchor="middle" fill="#EF4444" font-family="'Montserrat', sans-serif" font-weight="900" font-size="28">{left_val}</text>
+                <text x="0" y="156" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="21">{left_label}</text>
             </g>
 
-            <!-- Right Suspension Chains & Pan ($1 Group) -->
+            <!-- Right Suspension Chains & Pan -->
             <g id="pan-right" transform="translate(240, -120)">
                 <!-- Suspension Chains connected to beam end -->
                 <line x1="0" y1="0" x2="-55" y2="130" stroke="{p['secondary']}" stroke-width="2.5" />
@@ -842,10 +856,10 @@ def get_scales_balance_system(p: Dict[str, str]) -> tuple[str, str]:
                 <circle cx="0" cy="0" r="7" fill="{p['highlight']}" />
                 <!-- Pan Bowl -->
                 <path d="M -85,130 Q 0,175 85,130 Z" fill="{p['card_bg']}" stroke="{p['secondary']}" stroke-width="3" />
-                <!-- Weight Block ($1) -->
-                <rect x="-45" y="90" width="90" height="40" rx="8" fill="{p['bg_dark']}" stroke="{p['primary']}" stroke-width="2.5" />
-                <text x="0" y="120" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="30">$1</text>
-                <text x="0" y="156" text-anchor="middle" dominant-baseline="central" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="21">LOW INCENTIVE</text>
+                <!-- Right Weight Block -->
+                <rect x="-55" y="90" width="110" height="40" rx="8" fill="{p['bg_dark']}" stroke="{p['primary']}" stroke-width="2.5" />
+                <text x="0" y="120" text-anchor="middle" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="26">{right_val}</text>
+                <text x="0" y="156" text-anchor="middle" dominant-baseline="central" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="21">{right_label}</text>
             </g>
 
             <!-- Central Fulcrum / Pivot Bearing (On top of beam at pivot point) -->
@@ -861,7 +875,7 @@ def get_scales_balance_system(p: Dict[str, str]) -> tuple[str, str]:
         gsap.set('#metaphor-scales', {{ scale: 0.88, opacity: 0 }});
         tl.to('#metaphor-scales', {{ duration: 0.6, scale: 1.0, opacity: 1, ease: 'back.out(1.7)' }}, 0.1);
 
-        // Beat 2 (0.7s): Left $20 weight hits the pan, beam rapidly tilts down
+        // Beat 2 (0.7s): Left weight hits the pan, beam rapidly tilts down
         tl.to('#scales-beam-group', {{ duration: 0.65, rotate: -14, ease: 'back.out(1.5)', transformOrigin: '0px -120px' }}, 0.65);
 
         // Beat 3 (1.8s): Dynamic harmonic sway between -14 and +8 degrees
@@ -943,16 +957,19 @@ def get_cosmic_horizon(p: Dict[str, str]) -> tuple[str, str]:
 
 def get_split_comparison_layout(
     p: Dict[str, str],
-    left_title: str = "$20 HIGH INCENTIVE",
-    left_sub: str = "EXTERNAL JUSTIFICATION",
-    right_title: str = "$1 LOW INCENTIVE",
-    right_sub: str = "INTERNAL BELIEF SHIFT",
+    left_title: str = "BELIEF STATE",
+    left_metric: str = "IDENTITY",
+    left_sub: str = "INTERNAL MODEL",
+    right_title: str = "ACTION TAKEN",
+    right_metric: str = "REALITY",
+    right_sub: str = "OBSERVED OUTCOME",
     vs_label: str = "≠"
 ) -> tuple[str, str]:
     """
     LAYOUT 1: SPLIT_COMPARISON
     Side-by-side visual contrast with split headers, dual high-contrast cards,
     mobile-readable secondary sub-labels (>= 20px–22px), and central dynamic tension seam.
+    Fully dynamic parameters: zero hardcoded strings.
     """
     svg = f"""
     <g id="layout-split-comparison">
@@ -989,46 +1006,46 @@ def get_split_comparison_layout(
             </text>
         </g>
 
-        <!-- Left Visual Stage ($20 / External Justification) -->
+        <!-- Left Visual Stage -->
         <g transform="translate(500, 480)">
             <g id="split-left-stage" filter="url(#drop-shadow)">
                 <rect x="-220" y="-155" width="440" height="310" rx="24"
                       fill="url(#card-grad)" stroke="{p['primary']}" stroke-width="2.5" />
                 
-                <!-- Currency Tablet Stack / Foundation -->
+                <!-- Metric Foundation -->
                 <rect x="-140" y="-125" width="280" height="85" rx="14" fill="{p['bg_dark']}" stroke="{p['secondary']}" stroke-width="2" />
-                <text x="0" y="-76" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="46" filter="url(#glow-primary)">$20</text>
+                <text x="0" y="-76" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="36" filter="url(#glow-primary)">{left_metric}</text>
                 
                 <!-- Analytical Sub-Pill (Mobile-Readable >= 20px) -->
                 <rect x="-190" y="-15" width="380" height="48" rx="14" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="1.6" />
                 <text x="0" y="10" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20" letter-spacing="0.5">
                     {left_sub}
                 </text>
-                <!-- Quote Sub-Caption (Mobile-Readable 21px) -->
+                <!-- Label Sub-Caption (Mobile-Readable 21px) -->
                 <text x="0" y="74" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-family="'Montserrat', sans-serif" font-weight="800" font-size="21">
-                    "I lied for the money"
+                    {left_title}
                 </text>
             </g>
         </g>
 
-        <!-- Right Visual Stage ($1 / Internal Belief Shift) -->
+        <!-- Right Visual Stage -->
         <g transform="translate(1420, 480)">
             <g id="split-right-stage" filter="url(#drop-shadow)">
                 <rect x="-220" y="-155" width="440" height="310" rx="24"
                       fill="url(#card-grad)" stroke="#FF3B6B" stroke-width="2.5" />
                 
-                <!-- Solitary Coin / Tension Dial -->
+                <!-- Metric Tension Dial -->
                 <rect x="-140" y="-125" width="280" height="85" rx="14" fill="{p['bg_dark']}" stroke="#FF3B6B" stroke-width="2" />
-                <text x="0" y="-76" text-anchor="middle" dominant-baseline="central" fill="#FF3B6B" font-family="'Montserrat', sans-serif" font-weight="900" font-size="46" filter="url(#glow-intense)">$1</text>
+                <text x="0" y="-76" text-anchor="middle" dominant-baseline="central" fill="#FF3B6B" font-family="'Montserrat', sans-serif" font-weight="900" font-size="36" filter="url(#glow-intense)">{right_metric}</text>
                 
                 <!-- Analytical Sub-Pill (Mobile-Readable >= 20px) -->
                 <rect x="-190" y="-15" width="380" height="48" rx="14" fill="{p['card_bg']}" stroke="#FF3B6B" stroke-width="1.6" />
                 <text x="0" y="10" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20" letter-spacing="0.5">
                     {right_sub}
                 </text>
-                <!-- Quote Sub-Caption (Mobile-Readable 21px) -->
+                <!-- Label Sub-Caption (Mobile-Readable 21px) -->
                 <text x="0" y="74" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-family="'Montserrat', sans-serif" font-weight="800" font-size="21">
-                    "The task was truly fun!"
+                    {right_title}
                 </text>
             </g>
         </g>
@@ -1057,31 +1074,33 @@ def get_split_comparison_layout(
 
 def get_human_silhouette_scene(
     p: Dict[str, str],
-    variant: str = "conflict",
-    thought_text: str = "I AM AN HONEST PERSON",
-    subtitle_callout: str = "INTERNAL CONFLICT"
+    context_label: str = "INTERNAL CONFLICT",
+    thought_bubble: str = "DEFENDING REALITY",
+    emotion_state: str = "COGNITIVE FRICTION",
+    variant: str = "conflict"
 ) -> tuple[str, str]:
     """
     LAYOUT 2: HUMAN_SILHOUETTE_SCENE
     Flat 2.5D geometric human silhouette with rich filled gradient shading,
     specular rim lighting, radiating conflict resonance rings, illuminated prefrontal node,
     and mobile-readable floating thought callout.
+    Zero hardcoded strings.
     """
     lab_props = ""
     if variant == "experiment":
         lab_props = f"""
-        <!-- Stanford Pegboard Lab Setup (1959) -->
+        <!-- Experimental Laboratory Apparatus -->
         <g id="lab-table" transform="translate(680, 700)">
             <rect x="-240" y="0" width="480" height="24" rx="8" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="2" />
             <!-- Pegboard base -->
             <rect x="-140" y="-45" width="280" height="45" rx="6" fill="{p['bg_dark']}" stroke="{p['secondary']}" stroke-width="2" />
-            <!-- Pegs (48 wooden pegs representation) -->
+            <!-- Pegs representation -->
             <line x1="-90" y1="-45" x2="-90" y2="-85" stroke="{p['primary']}" stroke-width="6" stroke-linecap="round" />
             <line x1="-30" y1="-45" x2="-30" y2="-85" stroke="{p['primary']}" stroke-width="6" stroke-linecap="round" />
             <line x1="30" y1="-45" x2="30" y2="-85" stroke="{p['primary']}" stroke-width="6" stroke-linecap="round" />
             <line x1="90" y1="-45" x2="90" y2="-85" stroke="{p['primary']}" stroke-width="6" stroke-linecap="round" />
             <text x="0" y="55" text-anchor="middle" dominant-baseline="central" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20">
-                STANFORD PEGBOARD APPARATUS (1959)
+                {context_label}
             </text>
         </g>
         """
@@ -1151,12 +1170,12 @@ def get_human_silhouette_scene(
                 <!-- Category Tag Pill (Mobile-Readable >= 20px) -->
                 <rect x="-200" y="-56" width="400" height="42" rx="21" fill="{p['card_bg']}" stroke="{p['secondary']}" stroke-width="1.5" />
                 <text x="0" y="-35" text-anchor="middle" dominant-baseline="central" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20" letter-spacing="1.2">
-                    {subtitle_callout}
+                    {context_label}
                 </text>
 
                 <!-- Spoken Thought Core (High Contrast Bold) -->
                 <text x="0" y="30" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="26">
-                    "{thought_text}"
+                    "{thought_bubble}"
                 </text>
             </g>
         </g>
@@ -1191,16 +1210,18 @@ def get_human_silhouette_scene(
 
 def get_causal_mechanism_layout(
     p: Dict[str, str],
-    input_title: str = "CONTRADICTORY ACTION",
+    step1_input: str = "CONTRADICTORY ACTION",
+    step2_process: str = "PREFRONTAL ENGINE",
+    step3_output: str = "FABRICATED EXCUSE",
     input_sub: str = "BEHAVIORAL INPUT",
-    process_title: str = "PREFRONTAL ENGINE",
-    output_title: str = "FABRICATED EXCUSE",
-    output_sub: str = "'JUST THIS ONCE'"
+    process_sub: str = "RATIONALIZATION ACTIVE",
+    output_sub: str = "COGNITIVE RESOLUTION"
 ) -> tuple[str, str]:
     """
     LAYOUT 3: CAUSAL_MECHANISM
     Visual input-process-output diagram showing how contradiction transforms into rationalization
     with mobile-readable labels (>= 20px).
+    Fully dynamic parameters: zero hardcoded strings.
     """
     svg = f"""
     <g id="layout-causal-mechanism">
@@ -1224,7 +1245,7 @@ def get_causal_mechanism_layout(
             <text x="0" y="-4" text-anchor="middle" dominant-baseline="central" fill="#FF3B6B" font-family="'Montserrat', sans-serif" font-weight="900" font-size="24">⚡</text>
 
             <text x="0" y="44" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="20">
-                {input_title}
+                {step1_input}
             </text>
             <text x="0" y="74" text-anchor="middle" dominant-baseline="central" fill="#FB923C" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20">
                 {input_sub}
@@ -1250,12 +1271,12 @@ def get_causal_mechanism_layout(
             <circle cx="0" cy="0" r="50" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="2" />
             <text x="0" y="-14" text-anchor="middle" dominant-baseline="central" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="15" letter-spacing="1">STEP 02</text>
             <text x="0" y="10" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="18">ENGINE</text>
-            <text x="0" y="32" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="14">ACTIVE</text>
+            <text x="0" y="32" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="14">{process_sub}</text>
 
             <!-- Station Tag (Mobile-Readable >= 20px) -->
             <rect x="-160" y="145" width="320" height="42" rx="21" fill="{p['card_bg']}" stroke="{p['primary']}" stroke-width="1.8" />
             <text x="0" y="166" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="18">
-                {process_title}
+                {step2_process}
             </text>
         </g>
 
@@ -1273,7 +1294,7 @@ def get_causal_mechanism_layout(
             <text x="0" y="-4" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="24">✓</text>
 
             <text x="0" y="44" text-anchor="middle" dominant-baseline="central" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="20">
-                {output_title}
+                {step3_output}
             </text>
             <text x="0" y="74" text-anchor="middle" dominant-baseline="central" fill="{p['primary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="20">
                 {output_sub}
@@ -1297,15 +1318,20 @@ def get_causal_mechanism_layout(
 
 def get_macro_closeup_layout(
     p: Dict[str, str],
-    region_title: str = "ANTERIOR CINGULATE CORTEX",
-    metric_text: str = "ACUTE COGNITIVE FRICTION"
+    header_label: str = "● NEURAL TELEMETRY: ACTIVE",
+    focus_metric: str = "ACC CONFLICT",
+    sub_detail: str = "ANTERIOR CINGULATE ACTIVATION",
+    region_title: Optional[str] = None,
+    metric_text: Optional[str] = None
 ) -> tuple[str, str]:
     """
     LAYOUT 4: MACRO_CLOSEUP
     Cinematic macro zoom into synaptic cleft and neural transmission pathways with
     Flat 2.5D filled gradient structures, glowing continuous electrical arc discharges,
     and mobile-readable diagnostic HUD telemetry.
+    Fully dynamic parameters: zero hardcoded strings.
     """
+    display_title = region_title or sub_detail
     svg = f"""
     <g id="layout-macro-closeup">
         <!-- High-Tech HUD Diagnostic Card (Top Left - Unclipped & Auto-Padded) -->
@@ -1314,14 +1340,14 @@ def get_macro_closeup_layout(
                 <rect x="0" y="0" width="560" height="96" rx="20"
                       fill="{p['bg_dark']}" fill-opacity="0.95" stroke="{p['primary']}" stroke-width="2.5" />
                 <text x="24" y="34" fill="{p['secondary']}" font-family="'Montserrat', sans-serif" font-weight="800" font-size="15" letter-spacing="1.5">
-                    ● NEURAL TELEMETRY: ACTIVE
+                    {header_label}
                 </text>
                 <text x="24" y="68" fill="{p['highlight']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="22">
-                    {region_title}
+                    {display_title}
                 </text>
-                <rect x="430" y="26" width="106" height="44" rx="12" fill="{p['card_bg']}" stroke="{p['accent']}" stroke-width="1.8" />
-                <text x="483" y="54" text-anchor="middle" fill="{p['accent']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="16">
-                    98.4%
+                <rect x="400" y="26" width="136" height="44" rx="12" fill="{p['card_bg']}" stroke="{p['accent']}" stroke-width="1.8" />
+                <text x="468" y="54" text-anchor="middle" fill="{p['accent']}" font-family="'Montserrat', sans-serif" font-weight="900" font-size="14">
+                    {focus_metric}
                 </text>
             </g>
         </g>
@@ -1528,47 +1554,77 @@ def build_scene_html(
         gsap_timings.append(card_gsap)
 
     elif layout == "SPLIT_COMPARISON" or scene_type in ["split_comparison", "dissonance_split"]:
-        is_money = "$20" in sentence or "dollar" in sentence.lower() or "experiment" in sentence.lower()
-        l_title = "$20 HIGH INCENTIVE" if is_money else "BELIEF: RATIONAL"
-        l_sub = "EXTERNAL JUSTIFICATION" if is_money else "'I DO NOT MAKE MISTAKES'"
-        r_title = "$1 LOW INCENTIVE" if is_money else "ACTION: CONTRADICTION"
-        r_sub = "INTERNAL BELIEF SHIFT" if is_money else "UNCOMFORTABLE TRUTH"
-        split_svg, split_gsap = get_split_comparison_layout(p, l_title, l_sub, r_title, r_sub)
+        l_title = scene_config.get("left_title", "BELIEF STATE")
+        l_metric = scene_config.get("left_metric", "IDENTITY")
+        l_sub = scene_config.get("left_sub", "INTERNAL MODEL")
+        r_title = scene_config.get("right_title", "ACTION TAKEN")
+        r_metric = scene_config.get("right_metric", "REALITY")
+        r_sub = scene_config.get("right_sub", "OBSERVED OUTCOME")
+        split_svg, split_gsap = get_split_comparison_layout(
+            p=p,
+            left_title=l_title,
+            left_metric=l_metric,
+            left_sub=l_sub,
+            right_title=r_title,
+            right_metric=r_metric,
+            right_sub=r_sub
+        )
         elements_svg.append(split_svg)
         gsap_timings.append(split_gsap)
 
     elif layout == "HUMAN_SILHOUETTE_SCENE" or scene_type in ["human_silhouette", "human_conflict", "experiment_subject", "silhouette"]:
-        var = "experiment" if "peg" in sentence.lower() or "experiment" in sentence.lower() or "student" in sentence.lower() else "conflict"
-        thought = "I AM AN HONEST PERSON"
-        if "smoke" in sentence.lower():
-            thought = "JUST THIS ONCE"
-        elif "dollar" in sentence.lower():
-            thought = "THE TASK WAS EXCITING"
-        elif "mistake" in sentence.lower() or "lie" in sentence.lower():
-            thought = "I AM NEVER WRONG"
-        hum_svg, hum_gsap = get_human_silhouette_scene(p, variant=var, thought_text=thought, subtitle_callout=subtitle or "PREFRONTAL ARBITER")
+        ctx = scene_config.get("context_label", subtitle or "PREFRONTAL ARBITER")
+        thought = scene_config.get("thought_bubble", "DEFENDING REALITY")
+        emotion = scene_config.get("emotion_state", "COGNITIVE FRICTION")
+        var = "experiment" if "experiment" in scene_type or "peg" in sentence.lower() else "conflict"
+        hum_svg, hum_gsap = get_human_silhouette_scene(
+            p=p,
+            context_label=ctx,
+            thought_bubble=thought,
+            emotion_state=emotion,
+            variant=var
+        )
         elements_svg.append(hum_svg)
         gsap_timings.append(hum_gsap)
 
     elif layout == "CAUSAL_MECHANISM" or scene_type in ["causal_mechanism", "rationalization_machine", "rationalization_gears", "gears"]:
+        s1 = scene_config.get("step1_input", "DISSONANT INPUT")
+        s2 = scene_config.get("step2_process", "PREFRONTAL FILTER")
+        s3 = scene_config.get("step3_output", "ADAPTIVE EXCUSE")
         c_svg, c_gsap = get_causal_mechanism_layout(
             p=p,
-            input_title="CONTRADICTORY ACTION",
-            input_sub="BEHAVIORAL FRICTION",
-            process_title="RATIONALIZATION ENGINE",
-            output_title="FABRICATED EXCUSE",
-            output_sub="'JUST THIS ONCE'"
+            step1_input=s1,
+            step2_process=s2,
+            step3_output=s3
         )
         elements_svg.append(c_svg)
         gsap_timings.append(c_gsap)
 
     elif layout == "MACRO_CLOSEUP" or scene_type in ["macro_closeup", "neural_macro", "brain_intro", "brain"]:
-        m_svg, m_gsap = get_macro_closeup_layout(p, region_title=title, metric_text=subtitle or "ACUTE COGNITIVE FRICTION")
+        h_label = scene_config.get("header_label", "NEURAL TELEMETRY: ACTIVE")
+        f_metric = scene_config.get("focus_metric", "ACC CONFLICT")
+        sub_d = scene_config.get("sub_detail", subtitle or "ACUTE COGNITIVE FRICTION")
+        m_svg, m_gsap = get_macro_closeup_layout(
+            p=p,
+            header_label=h_label,
+            focus_metric=f_metric,
+            sub_detail=sub_d,
+            region_title=title
+        )
         elements_svg.append(m_svg)
         gsap_timings.append(m_gsap)
 
     elif layout == "FULL_CANVAS_METAPHOR" or scene_type in ["full_canvas_metaphor", "horizon_revelation", "horizon", "outro"]:
-        f_svg, f_gsap = get_full_canvas_metaphor_layout(p, is_outro=is_outro)
+        hl = scene_config.get("headline", title or "COGNITIVE TRANSCENDENCE")
+        foc = scene_config.get("focal_label", "TRUTH OVER COMFORT")
+        sup = scene_config.get("supporting_note", subtitle or "OBJECTIVE REALITY")
+        f_svg, f_gsap = get_full_canvas_metaphor_layout(
+            p=p,
+            headline=hl,
+            focal_label=foc,
+            supporting_note=sup,
+            is_outro=is_outro
+        )
         elements_svg.append(f_svg)
         gsap_timings.append(f_gsap)
 
@@ -1583,7 +1639,11 @@ def build_scene_html(
 
     elif scene_type in ["scales_balance", "scales"]:
         elements_svg.append(get_safe_chapter_header(title, subtitle, ch_idx, p))
-        scales_svg, scales_gsap = get_scales_balance_system(p)
+        s_left_val = scene_data.get("left_metric", "HEAVY")
+        s_right_val = scene_data.get("right_metric", "LIGHT")
+        s_left_lbl = scene_data.get("left_header", "HIGH INCENTIVE")
+        s_right_lbl = scene_data.get("right_header", "LOW INCENTIVE")
+        scales_svg, scales_gsap = get_scales_balance_system(p, s_left_lbl, s_right_lbl, s_left_val, s_right_val)
         elements_svg.append(scales_svg)
         gsap_timings.append(scales_gsap)
 

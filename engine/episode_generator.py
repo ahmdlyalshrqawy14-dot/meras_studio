@@ -16,6 +16,12 @@ from typing import Dict, List, Any, Tuple, Optional
 
 STUDIO_ROOT = Path(__file__).resolve().parent.parent
 
+# Import shared sanitization utility
+try:
+    from engine.voice_engine import sanitize_display_and_tts_text
+except ImportError:
+    from voice_engine import sanitize_display_and_tts_text
+
 # Anti-AI-Slop Style Guardrail: Banned Cliché LLM Prose
 BANNED_AI_SLOP_PATTERNS = [
     r"\bdelve\b",
@@ -39,11 +45,13 @@ BANNED_AI_SLOP_PATTERNS = [
 
 def sanitize_and_validate_script_style(text: str) -> str:
     """
-    Enforces Anti-AI-Slop Guardrails:
-    Bans cliché LLM filler words and enforces crisp, punchy, conversational
-    documentary writing (Kurzgesagt/Vox style, 8th-grade readability, concrete metaphors).
+    Enforces Anti-AI-Slop Guardrails & Markdown Sanitization:
+    Bans cliché LLM filler words, strips 100% of asterisks/markdown,
+    and enforces crisp, punchy, conversational documentary writing.
     """
-    processed = text
+    # 0. Strip all markdown and asterisks first
+    processed = sanitize_display_and_tts_text(text)
+    
     replacements = {
         r"\bexquisitely optimized\b": "built",
         r"\bagonizing collision\b": "direct clash",
@@ -68,6 +76,9 @@ def sanitize_and_validate_script_style(text: str) -> str:
     else:
         print("[StoryDirector] ✓ Anti-AI-Slop Style Guardrail PASSED: Clean, punchy documentary tone verified.")
 
+    # Re-verify zero asterisks
+    processed = sanitize_display_and_tts_text(processed)
+    assert "*" not in processed, f"Asterisk remained after script sanitization: {processed[:100]}"
     return processed
 
 def load_episode_roadmap(episode_num: int) -> Dict[str, Any]:
@@ -171,7 +182,7 @@ def generate_full_episode_script(episode_data: Dict[str, Any]) -> Tuple[str, Lis
                 f"Yet because these investors staked their professional reputations and identities on being financial geniuses, accepting the loss feels psychologically unbearable. "
                 f"They escalate their commitment, pouring good money after bad in a desperate bid to be proven right. "
                 f"Consider ideological and political extremism. When predicted doomsday scenarios or utopian promises fail to materialize, true believers rarely apologize or abandon the creed. "
-                f"Instead, they invent elaborate conspiracy theories: *The election was stolen, the opposition saboteurs intervened, the prophecy was symbolic.* "
+                f"Instead, they invent elaborate conspiracy theories: The election was stolen, the opposition saboteurs intervened, the prophecy was symbolic. "
                 f"In aviation and medicine, seasoned captains and senior surgeons have ignored unmistakable alarm bells because acknowledging a misjudgment felt like personal humiliation. "
                 f"Perhaps most unsettling of all, research confirms that higher cognitive ability does not protect you from this trap. "
                 f"Intelligent individuals do not experience less cognitive dissonance; "
@@ -196,8 +207,8 @@ def generate_full_episode_script(episode_data: Dict[str, Any]) -> Tuple[str, Lis
                 f"Later, a neutral third party interviewed all subjects about how much they genuinely enjoyed the pegboard task. "
                 f"Intuition suggests that individuals paid twenty dollars would feel happier and rate the experience more positively. "
                 f"The experimental findings revealed the exact reverse. "
-                f"Those who received twenty dollars possessed an undeniable external reason for lying: *I lied because twenty dollars is great money.* They freely admitted the task was boring torture. "
-                f"The students paid one dollar experienced severe internal dissonance: *I told someone it was fun, but I only received one buck. I am an honest person, so the task must have truly had merit!* "
+                f"Those who received twenty dollars possessed an undeniable external reason for lying: 'I lied because twenty dollars is great money.' They freely admitted the task was boring torture. "
+                f"The students paid one dollar experienced severe internal dissonance: 'I told someone it was fun, but I only received one buck. I am an honest person, so the task must have truly had merit!' "
                 f"Their prefrontal cortex rewrote their genuine memory to resolve the conflict."
             )
         },
@@ -230,7 +241,124 @@ def generate_full_episode_script(episode_data: Dict[str, Any]) -> Tuple[str, Lis
 
     full_text_parts = [ch["text"] for ch in chapters]
     full_script = "\n\n".join(full_text_parts)
+    assert "*" not in full_script, f"Found unstripped asterisk in full script: {full_script}"
     return full_script, chapters
+
+def generate_dynamic_scene_fields(layout: str, sentence: str, chapter_title: str, ch_idx: int) -> Dict[str, str]:
+    """Generates rich, contextual, layout-specific fields for each scene in scene_plan.json."""
+    sent_l = sentence.lower() if sentence else ""
+    fields = {}
+    
+    if layout == "SPLIT_COMPARISON":
+        if "dollar" in sent_l or "$20" in sent_l or "$1" in sent_l:
+            fields["left_title"] = "HIGH INCENTIVE"
+            fields["left_metric"] = "$20 PAYOUT"
+            fields["left_sub"] = "EXTERNAL JUSTIFICATION"
+            fields["right_title"] = "LOW INCENTIVE"
+            fields["right_metric"] = "$1 PAYOUT"
+            fields["right_sub"] = "INTERNAL BELIEF SHIFT"
+        elif "action" in sent_l and "belief" in sent_l:
+            fields["left_title"] = "CORE BELIEFS"
+            fields["left_metric"] = "IDENTITY"
+            fields["left_sub"] = "INTERNAL SELF-IMAGE"
+            fields["right_title"] = "CONTRADICTORY ACTION"
+            fields["right_metric"] = "BEHAVIOR"
+            fields["right_sub"] = "ACUTE DISSONANCE"
+        elif "invest" in sent_l or "money" in sent_l or "loss" in sent_l:
+            fields["left_title"] = "FINANCIAL MODEL"
+            fields["left_metric"] = "PROJECTION"
+            fields["left_sub"] = "REPUTATION STAKE"
+            fields["right_title"] = "MARKET REALITY"
+            fields["right_metric"] = "INSOLVENCY"
+            fields["right_sub"] = "ESCALATED COMMITMENT"
+        elif "honest" in sent_l or "lie" in sent_l or "truth" in sent_l:
+            fields["left_title"] = "SELF-PERCEPTION"
+            fields["left_metric"] = "HONEST PERSON"
+            fields["left_sub"] = "MORAL STANDARD"
+            fields["right_title"] = "DISSONANT BEHAVIOR"
+            fields["right_metric"] = "THE LIE"
+            fields["right_sub"] = "EGO DEFENSE MECHANISM"
+        else:
+            fields["left_title"] = "PRIMARY COGNITION"
+            fields["left_metric"] = "CONCEPT A"
+            fields["left_sub"] = chapter_title.upper()
+            fields["right_title"] = "OPPOSING FORCE"
+            fields["right_metric"] = "CONCEPT B"
+            fields["right_sub"] = "COGNITIVE FRICTION"
+
+    elif layout == "HUMAN_SILHOUETTE_SCENE":
+        fields["context_label"] = chapter_title.upper()
+        if "smoke" in sent_l:
+            fields["thought_bubble"] = "I CAN QUIT ANYTIME"
+            fields["emotion_state"] = "RATIONALIZATION"
+        elif "hunter" in sent_l or "savannah" in sent_l or "ancestral" in sent_l:
+            fields["thought_bubble"] = "I MUST PROJECT STRENGTH"
+            fields["emotion_state"] = "EVOLUTIONARY SHIELD"
+        elif "investor" in sent_l or "wall street" in sent_l or "loss" in sent_l:
+            fields["thought_bubble"] = "THE MARKET IS WRONG"
+            fields["emotion_state"] = "PRIDE DEFENSE"
+        elif "experiment" in sent_l or "peg" in sent_l or "task" in sent_l:
+            fields["thought_bubble"] = "THE TASK WAS ENJOYABLE"
+            fields["emotion_state"] = "MEMORY REWRITE"
+        elif "mistake" in sent_l or "error" in sent_l or "wrong" in sent_l:
+            fields["thought_bubble"] = "I WAS BASICALLY RIGHT"
+            fields["emotion_state"] = "EGO RESISTANCE"
+        elif "honest" in sent_l:
+            fields["thought_bubble"] = "MY MOTIVES WERE PURE"
+            fields["emotion_state"] = "SELF-JUSTIFICATION"
+        else:
+            fields["thought_bubble"] = "DEFENDING REALITY"
+            fields["emotion_state"] = "INTERNAL EQUILIBRIUM"
+
+    elif layout == "CAUSAL_MECHANISM":
+        if "gear" in sent_l or "engine" in sent_l or "manufacture" in sent_l:
+            fields["step1_input"] = "COGNITIVE CLASH"
+            fields["step2_process"] = "RATIONALIZATION ENGINE"
+            fields["step3_output"] = "FABRICATED COMFORT"
+        elif "experiment" in sent_l or "peg" in sent_l:
+            fields["step1_input"] = "BORING TASK ($1)"
+            fields["step2_process"] = "DISSONANCE OVERDRIVE"
+            fields["step3_output"] = "ALTERED BELIEF"
+        elif "invest" in sent_l or "market" in sent_l:
+            fields["step1_input"] = "MOUNTING LOSS"
+            fields["step2_process"] = "CONFIRMATION BIAS"
+            fields["step3_output"] = "DOUBLE DOWN"
+        else:
+            fields["step1_input"] = "DISSONANT INPUT"
+            fields["step2_process"] = "PREFRONTAL FILTER"
+            fields["step3_output"] = "ADAPTIVE EXCUSE"
+
+    elif layout == "MACRO_CLOSEUP":
+        fields["header_label"] = "NEURAL TELEMETRY: ACTIVE"
+        if "cingulate" in sent_l or "pain" in sent_l:
+            fields["focus_metric"] = "ACC CONFLICT"
+            fields["sub_detail"] = "ANTERIOR CINGULATE ACTIVATION"
+        elif "insula" in sent_l or "visceral" in sent_l:
+            fields["focus_metric"] = "INSULA FLARE"
+            fields["sub_detail"] = "GUT-LEVEL RESISTANCE"
+        elif "cortex" in sent_l or "prefrontal" in sent_l:
+            fields["focus_metric"] = "PFC OVERDRIVE"
+            fields["sub_detail"] = "PREFRONTAL RATIONALIZATION"
+        elif "synap" in sent_l or "brain" in sent_l or "skull" in sent_l:
+            fields["focus_metric"] = "SYNAPTIC FLUX"
+            fields["sub_detail"] = "NEURAL PATHWAY STABILIZATION"
+        else:
+            fields["focus_metric"] = "TELEMETRY"
+            fields["sub_detail"] = chapter_title.upper()
+
+    elif layout == "FULL_CANVAS_METAPHOR":
+        fields["headline"] = chapter_title.upper()
+        if "transcend" in sent_l or "antidote" in sent_l or "see clearly" in sent_l or "plasticity" in sent_l:
+            fields["focal_label"] = "COGNITIVE TRANSCENDENCE"
+            fields["supporting_note"] = "TRUTH OVER COMFORT"
+        elif "evolution" in sent_l or "savannah" in sent_l or "ancestral" in sent_l:
+            fields["focal_label"] = "EVOLUTIONARY LANDSCAPE"
+            fields["supporting_note"] = "SURVIVAL MECHANISMS"
+        else:
+            fields["focal_label"] = "BEHAVIORAL HORIZON"
+            fields["supporting_note"] = "OBJECTIVE REALITY"
+
+    return fields
 
 def build_audio_driven_scene_plan(
     chapters: List[Dict[str, Any]],
@@ -273,12 +401,13 @@ def build_audio_driven_scene_plan(
     last_layout = None
 
     for ch_idx, ch in enumerate(chapters, 1):
-        ch_title = ch["chapter_title"]
-        ch_sub = ch["subtitle"]
+        ch_title = sanitize_display_and_tts_text(ch["chapter_title"])
+        ch_sub = sanitize_display_and_tts_text(ch.get("subtitle", "Behavioral Mechanics"))
 
         # Only insert title card for chapters 2-6 (Zero-Second Hook: Chapter 1 opens instantly on frame 0)
         if ch_idx > 1:
-            micro_scenes.append({
+            card_fields = generate_dynamic_scene_fields("FULL_CANVAS_METAPHOR", "", ch_title, ch_idx)
+            card_dict = {
                 "scene_id": f"scene_{scene_idx:03d}_card_ch{ch_idx}",
                 "chapter_index": ch_idx,
                 "scene_type": "chapter_title_card",
@@ -289,12 +418,15 @@ def build_audio_driven_scene_plan(
                 "sentence": "",
                 "punch_word": None,
                 "foley_cues": [{"time": 0.4, "sfx": "gentle_chime"}]
-            })
+            }
+            card_dict.update(card_fields)
+            micro_scenes.append(card_dict)
             scene_idx += 1
 
         # Partition chapter sentences
         sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', ch["text"]) if len(s.strip()) > 5]
         for s_idx, sentence in enumerate(sentences):
+            sentence = sanitize_display_and_tts_text(sentence)
             sent_l = sentence.lower()
             is_final_scene = (ch_idx == len(chapters) and s_idx == len(sentences) - 1)
 
@@ -321,7 +453,6 @@ def build_audio_driven_scene_plan(
                 layout = "MACRO_CLOSEUP"
                 scene_type = "macro_closeup"
             else:
-                # Cycle smoothly ensuring no adjacent layout repetition
                 for cand_layout, cand_type in LAYOUT_CYCLE:
                     if cand_layout != last_layout:
                         layout, scene_type = cand_layout, cand_type
@@ -334,7 +465,9 @@ def build_audio_driven_scene_plan(
             w_count = len(sentence.split())
             dur = max(3.5, min(7.0, round(w_count / 2.5, 2)))
 
-            micro_scenes.append({
+            dyn_fields = generate_dynamic_scene_fields(layout, sentence, ch_title, ch_idx)
+
+            scene_dict = {
                 "scene_id": f"scene_{scene_idx:03d}",
                 "chapter_index": ch_idx,
                 "layout": layout,
@@ -346,7 +479,9 @@ def build_audio_driven_scene_plan(
                 "punch_word": punch_word,
                 "is_outro": is_final_scene,
                 "foley_cues": [{"time": 0.6, "sfx": foley_sfx}]
-            })
+            }
+            scene_dict.update(dyn_fields)
+            micro_scenes.append(scene_dict)
             scene_idx += 1
 
     # Calibrate scene durations to word timestamps
@@ -357,6 +492,10 @@ def build_audio_driven_scene_plan(
             total_target_duration=total_timeline_target
         )
 
+    # Verification: Assert zero asterisks anywhere in scene plan
+    scene_plan_str = json.dumps(micro_scenes)
+    assert "*" not in scene_plan_str, "Found unstripped asterisk in scene plan!"
+
     return micro_scenes
 
 def bind_scenes_to_word_timestamps(
@@ -365,10 +504,13 @@ def bind_scenes_to_word_timestamps(
     total_target_duration: float
 ) -> List[Dict[str, Any]]:
     """
-    Binds each scene's start time and duration strictly to the exact faster-whisper word timestamps
-    of its corresponding spoken sentence or trigger keywords.
-    Ensures that visual metaphors (such as $20 vs $1 scales or 1957 counter) appear
-    at the exact millisecond the narrator mentions them.
+    Binds each scene's start time and duration strictly to faster-whisper word timestamps
+    using a bounded content-word matching window with proportional timeline calibration.
+    Guarantees:
+    - No single scene ever exceeds 14.0s (Hard Cap)
+    - No scene is shorter than 1.2s (tight outro minimum)
+    - Exactly contiguous timeline: start_{i+1} == end_i, duration == end_i - start_i
+    - abs(sum(scene_durations) - total_target_duration) <= 0.25s (typically 0.00s)
     """
     if not words_alignment or len(scenes) <= 1:
         return scenes
@@ -378,41 +520,127 @@ def bind_scenes_to_word_timestamps(
         return re.sub(r'[^a-z0-9]', '', str(w).lower())
 
     clean_words = [clean(w.get("word", "")) for w in words_alignment]
-    
-    # Identify start timestamp for each scene
-    scene_start_times = [0.0] * len(scenes)
+    n = len(scenes)
+    scene_start_times = [0.0] * n
     last_idx = 0
 
-    for s_idx in range(1, len(scenes)):
-        match_keys = scenes[s_idx].get("match_words", [])
-        if not match_keys:
-            sent = scenes[s_idx].get("sentence", "")
-            match_keys = [clean(w) for w in sent.split() if clean(w)][:2]
-        else:
-            match_keys = [clean(w) for w in match_keys if clean(w)]
+    STOP_WORDS = {
+        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
+        "by", "from", "up", "about", "into", "over", "after", "is", "are", "was", "were",
+        "be", "been", "being", "have", "has", "had", "do", "does", "did", "you", "your",
+        "we", "our", "they", "their", "it", "its", "that", "this", "these", "those"
+    }
 
+    for s_idx in range(1, n):
+        sent = scenes[s_idx].get("sentence", "").strip()
+        is_card = scenes[s_idx].get("scene_type") == "chapter_title_card" or not sent
+        prev_start = scene_start_times[s_idx - 1]
+
+        if is_card:
+            card_dur = float(scenes[s_idx - 1].get("duration", 2.0)) if s_idx > 0 else 2.0
+            scene_start_times[s_idx] = round(prev_start + min(card_dur, 2.5), 2)
+            continue
+
+        sent_words = [clean(w) for w in sent.split() if clean(w)]
+        if not sent_words:
+            scene_start_times[s_idx] = round(prev_start + 4.0, 2)
+            continue
+
+        # Search window: up to 100 words from last_idx
+        search_end = min(len(clean_words), last_idx + 100)
         found_time = None
-        for w_idx in range(last_idx, len(clean_words)):
-            if match_keys and clean_words[w_idx] == match_keys[0]:
-                if len(match_keys) == 1 or (w_idx + 1 < len(clean_words) and clean_words[w_idx + 1] == match_keys[1]):
-                    found_time = words_alignment[w_idx]["start"]
-                    last_idx = w_idx + 1
+        best_w_idx = None
+
+        content_words = [w for w in sent_words[:6] if len(w) >= 4 and w not in STOP_WORDS]
+
+        # 1. First priority: 2-word sequence if at least one is a content word
+        if len(sent_words) >= 2:
+            k1, k2 = sent_words[0], sent_words[1]
+            for w_idx in range(last_idx, search_end - 1):
+                if clean_words[w_idx] == k1 and clean_words[w_idx + 1] == k2:
+                    cand_time = words_alignment[w_idx]["start"]
+                    if 2.0 <= (cand_time - prev_start) <= 14.0:
+                        found_time = cand_time
+                        best_w_idx = w_idx
+                        break
+
+        # 2. Second priority: match on any distinctive content word
+        if found_time is None and content_words:
+            for cw in content_words:
+                for w_idx in range(last_idx, search_end):
+                    if clean_words[w_idx] == cw:
+                        cand_time = words_alignment[w_idx]["start"]
+                        cw_pos = sent_words.index(cw)
+                        est_start = max(prev_start + 2.0, cand_time - (cw_pos * 0.4))
+                        if 2.0 <= (est_start - prev_start) <= 14.0:
+                            found_time = est_start
+                            best_w_idx = w_idx
+                            break
+                if found_time is not None:
                     break
-        
-        if found_time is not None:
-            scene_start_times[s_idx] = max(round(scene_start_times[s_idx - 1] + 2.0, 2), round(found_time, 2))
+
+        # 3. Third priority: first word if not stop word
+        if found_time is None and sent_words[0] not in STOP_WORDS:
+            for w_idx in range(last_idx, search_end):
+                if clean_words[w_idx] == sent_words[0]:
+                    cand_time = words_alignment[w_idx]["start"]
+                    if 2.0 <= (cand_time - prev_start) <= 14.0:
+                        found_time = cand_time
+                        best_w_idx = w_idx
+                        break
+
+        if found_time is not None and best_w_idx is not None:
+            scene_start_times[s_idx] = round(found_time, 2)
+            last_idx = max(last_idx + 1, best_w_idx + 1)
         else:
-            scene_start_times[s_idx] = round(scene_start_times[s_idx - 1] + scenes[s_idx - 1]["duration"], 2)
+            prev_sent = scenes[s_idx - 1].get("sentence", "")
+            est_dur = max(2.5, min(8.0, round(len(prev_sent.split()) / 2.1, 2))) if prev_sent else 2.0
+            scene_start_times[s_idx] = round(prev_start + est_dur, 2)
+            last_idx = min(len(clean_words) - 1, last_idx + max(2, len(prev_sent.split())))
 
-    # Compute duration for each scene: duration_i = start_{i+1} - start_i
-    for s_idx in range(len(scenes) - 1):
-        dur = max(2.0, round(scene_start_times[s_idx + 1] - scene_start_times[s_idx], 2))
-        scenes[s_idx]["duration"] = dur
+    # 1. Compute raw durations between scene start times
+    for s_idx in range(n - 1):
+        raw_dur = round(scene_start_times[s_idx + 1] - scene_start_times[s_idx], 2)
+        scenes[s_idx]["duration"] = max(2.0, min(14.0, raw_dur))
 
-    # Final scene takes remaining duration to reach total_target_duration (tight outro)
-    sum_prev = sum(scenes[i]["duration"] for i in range(len(scenes) - 1))
-    final_dur = max(1.2, round(total_target_duration - sum_prev, 2))
+    # Estimate final scene duration based on its sentence length + outro buffer
+    last_sent = scenes[-1].get("sentence", "")
+    est_last_dur = max(2.5, min(8.0, round(len(last_sent.split()) / 2.1 + 1.2, 2)))
+    scenes[-1]["duration"] = est_last_dur
+
+    # 2. Proportional Scaling Calibration across the entire timeline
+    current_total = sum(s["duration"] for s in scenes)
+    scale_factor = total_target_duration / current_total
+
+    for s in scenes:
+        scaled_dur = round(s["duration"] * scale_factor, 2)
+        s["duration"] = max(2.0, min(14.0, scaled_dur))
+
+    # 3. Build strictly contiguous timeline
+    cur_t = 0.0
+    for s in scenes[:-1]:
+        s["start_time"] = round(cur_t, 2)
+        cur_t = round(cur_t + s["duration"], 2)
+        s["end_time"] = cur_t
+
+    # Reconcile final fraction of a second on the last scene
+    sum_prev = sum(s["duration"] for s in scenes[:-1])
+    final_dur = round(total_target_duration - sum_prev, 2)
+    if final_dur > 14.0 or final_dur < 1.2:
+        residual = final_dur - 6.0
+        scenes[-2]["duration"] = round(scenes[-2]["duration"] + residual, 2)
+        scenes[-2]["end_time"] = round(scenes[-2]["start_time"] + scenes[-2]["duration"], 2)
+        cur_t = scenes[-2]["end_time"]
+        final_dur = 6.0
+
     scenes[-1]["duration"] = final_dur
+    scenes[-1]["start_time"] = cur_t
+    scenes[-1]["end_time"] = round(cur_t + final_dur, 2)
+
+    # Automated assertions
+    assert all(s["duration"] <= 14.0 for s in scenes), "Hard cap violated: scene duration > 14.0s!"
+    assert all(s["duration"] >= 1.2 for s in scenes), "Minimum scene duration violated (< 1.2s)!"
+    assert abs(sum(s["duration"] for s in scenes) - total_target_duration) <= 0.25, "Timeline drift exceeds 0.25s!"
 
     return scenes
 

@@ -45,6 +45,29 @@ from episode_generator import (
     generate_verification_script
 )
 
+class UnbufferedTeeLogger:
+    """Streams stdout/stderr in unbuffered real-time to both console and a live log file."""
+    def __init__(self, filepath: Path, original_stream):
+        self.filepath = filepath
+        self.original_stream = original_stream
+        self.file = open(filepath, "a", encoding="utf-8", buffering=1)
+
+    def write(self, data):
+        self.original_stream.write(data)
+        self.original_stream.flush()
+        try:
+            self.file.write(data)
+            self.file.flush()
+        except Exception:
+            pass
+
+    def flush(self):
+        self.original_stream.flush()
+        try:
+            self.file.flush()
+        except Exception:
+            pass
+
 def generate_vertical_short(input_video: str, output_short: str, duration: float = 60.0):
     """
     Produces a 60-second 9:16 vertical Short from the master cut.
@@ -209,6 +232,12 @@ def run_production_pipeline(
     temp_dir = STUDIO_ROOT / "temp" / temp_dirname
     os.makedirs(ep_out_dir, exist_ok=True)
     os.makedirs(temp_dir, exist_ok=True)
+
+    # Attach live unbuffered progress logging to pipeline_live.log
+    live_log = ep_out_dir / "pipeline_live.log"
+    sys.stdout = UnbufferedTeeLogger(live_log, sys.__stdout__)
+    sys.stderr = UnbufferedTeeLogger(live_log, sys.__stderr__)
+    print(f"[Pipeline] Streaming unbuffered live log -> {live_log}")
 
     # Ensure procedural soft SFX suite exists
     sfx_dir = STUDIO_ROOT / "assets" / "sfx"

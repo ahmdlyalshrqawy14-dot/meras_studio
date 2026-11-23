@@ -46,6 +46,33 @@ AUTO_EMPHASIS_HOOKS = [
     r"\bcounter-intuitive\b"
 ]
 
+def sanitize_display_and_tts_text(text: str) -> str:
+    """
+    Cleans all markdown formatting, asterisks, spoken symbol words, and excessive whitespace.
+    Guarantees clean display in captions and zero spoken 'asterisk' in TTS narration.
+    """
+    if not text:
+        return ""
+    
+    # Strip markdown headers at beginning of line
+    t = re.sub(r'^\s*#+\s*', '', text, flags=re.MULTILINE)
+    # Strip markdown bold/italics
+    t = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', t)
+    t = re.sub(r'_{1,3}(.*?)_{1,3}', r'\1', t)
+    t = re.sub(r'`+(.*?)`+', r'\1', t)
+    t = re.sub(r'~~(.*?)~~', r'\1', t)
+    
+    # Strip stray symbols
+    t = re.sub(r'[*_`#~]', '', t)
+    
+    # Strip literal spoken symbol names that might have been typed out
+    t = re.sub(r'\b(asterisk|bullet point|hashtag)\b', '', t, flags=re.IGNORECASE)
+    
+    # Normalize excess spaces and clean lines
+    t = re.sub(r'[ \t]+', ' ', t)
+    t = re.sub(r'\n\s*\n', '\n', t).strip()
+    return t
+
 def build_ssml(
     text: str,
     voice_name: str = DEFAULT_VOICE,
@@ -60,7 +87,9 @@ def build_ssml(
     - Expressive emphasis on psychological hooks
     - Strategic curiosity and transition pauses
     """
-    processed = text
+    # 0. Sanitize all markdown and asterisks to guarantee zero spoken 'asterisk'
+    processed = sanitize_display_and_tts_text(text)
+    assert "*" not in processed, f"Sanitization failed: asterisk remains in text: {processed[:100]}"
     
     # 1. Enforce exact clean pronunciation lock for Meras using sub alias 'Miras'
     def _replace_brand(m):
@@ -68,11 +97,6 @@ def build_ssml(
     
     # Only replace if not already wrapped in sub alias
     processed = re.sub(r'(?<!<sub alias="Miras">)\bMeras\b(?!<\/sub>)', _replace_brand, processed)
-
-    # 2. Transform markdown **bold** into <emphasis level="strong">
-    processed = re.sub(r'\*\*(.+?)\*\*', r'<emphasis level="strong">\1</emphasis>', processed)
-    # Transform markdown *italic* into <emphasis level="moderate">
-    processed = re.sub(r'\*(.+?)\*', r'<emphasis level="moderate">\1</emphasis>', processed)
 
     # 3. Strategic documentary pauses
     processed = re.sub(r'\.\.\.', ' <break time="320ms"/> ', processed)
@@ -306,7 +330,10 @@ def generate_voice(
         print(f"[VoiceEngine] ⏭️ Checkpoint resume: using existing {wav_path} and {alignment_path}")
         return wav_path, alignment_path
 
-    ssml = build_ssml(text, voice_name=voice_name, rate=rate, pitch=pitch)
+    sanitized_text = sanitize_display_and_tts_text(text)
+    assert "*" not in sanitized_text, f"Unsanitized asterisk in text before TTS: {sanitized_text[:100]}"
+    ssml = build_ssml(sanitized_text, voice_name=voice_name, rate=rate, pitch=pitch)
+    assert "*" not in ssml, f"Unsanitized asterisk in SSML: {ssml[:100]}"
     
     azure_configured = (
         AZURE_SPEECH_KEY and 
@@ -320,10 +347,10 @@ def generate_voice(
     
     if not success:
         pitch_edge = "+1Hz" if pitch == "+1%" else pitch
-        success = synthesize_azure_edge(text, wav_path, voice_name=voice_name, rate=rate, pitch=pitch_edge)
+        success = synthesize_azure_edge(sanitized_text, wav_path, voice_name=voice_name, rate=rate, pitch=pitch_edge)
     
     if not success:
-        synthesize_fallback(text, wav_path)
+        synthesize_fallback(sanitized_text, wav_path)
 
     # Extract word timestamps
     extract_word_timestamps(wav_path, alignment_path)

@@ -23,17 +23,50 @@ from typing import List, Dict, Any, Optional
 STUDIO_ROOT = Path(__file__).resolve().parent.parent
 
 def get_media_duration(file_path: str) -> float:
-    """Robust duration extraction using ffmpeg stderr output."""
+    """Robust duration extraction using ffprobe or ffmpeg stderr output."""
     import re
     if not os.path.exists(file_path):
         return 0.0
     creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
-    res = subprocess.run(["ffmpeg", "-i", file_path], capture_output=True, text=True, creationflags=creationflags)
-    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
-    if m:
-        h, m_, s = m.groups()
-        return int(h) * 3600 + int(m_) * 60 + float(s)
-    return 5.0
+    # Try ffprobe first if available
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path],
+            capture_output=True, text=True, creationflags=creationflags
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            val = float(res.stdout.strip())
+            if val > 0:
+                return round(val, 3)
+    except Exception:
+        pass
+
+    # Fallback to ffmpeg -i parsing
+    try:
+        res = subprocess.run(["ffmpeg", "-i", file_path], capture_output=True, text=True, creationflags=creationflags)
+        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
+        if m:
+            h, m_, s = m.groups()
+            return round(int(h) * 3600 + int(m_) * 60 + float(s), 3)
+    except Exception:
+        pass
+    return 0.0
+
+def compute_xfade_offsets(clip_durations: List[float], transition_duration: float) -> List[float]:
+    """
+    Computes exact xfade transition offsets for a sequence of clips.
+    Offset k is the timestamp in the accumulated video where clip k begins crossfading.
+    For N clips, returns N-1 offsets.
+    """
+    if len(clip_durations) <= 1:
+        return []
+    offsets = []
+    accum_offset = 0.0
+    for dur in clip_durations[:-1]:
+        prev_target_dur = max(0.1, dur - transition_duration)
+        accum_offset += prev_target_dur
+        offsets.append(round(accum_offset, 3))
+    return offsets
 
 def adjust_foley_cues_for_speech(
     foley_cues: List[Dict[str, Any]],
@@ -297,21 +330,20 @@ def _stitch_single_xfade_batch(
         return output_mp4
 
     clip_durations = [get_media_duration(clip) for clip in scene_clips]
+    offsets = compute_xfade_offsets(clip_durations, transition_duration)
+
     inputs = []
     for clip in scene_clips:
         inputs.extend(["-i", clip])
 
     filter_parts = []
     last_stream = "[0:v]"
-    accum_offset = 0.0
 
-    for i in range(1, len(scene_clips)):
-        prev_target_dur = max(0.5, clip_durations[i-1] - transition_duration)
-        accum_offset += prev_target_dur
+    for i, offset in enumerate(offsets, start=1):
         out_stream = f"[v_trans_{i}]" if i < len(scene_clips) - 1 else "[v_stitched]"
         trans_type = "fade" if i % 2 == 1 else "circlecrop"
         filter_parts.append(
-            f"{last_stream}[{i}:v]xfade=transition={trans_type}:duration={transition_duration}:offset={accum_offset:.3f}{out_stream}"
+            f"{last_stream}[{i}:v]xfade=transition={trans_type}:duration={transition_duration}:offset={offset:.3f}{out_stream}"
         )
         last_stream = out_stream
 
@@ -386,6 +418,17 @@ def composite_video(
     master_dur = max(master_dur, round(voice_dur + 1.2, 2))
 
     print(f"[Compositor] Stitched Video: {stitched_dur:.2f}s | Voice: {voice_dur:.2f}s -> Master Target: {master_dur:.2f}s")
+
+    # Automated Sync Gate (Fail-Fast): Prevent out-of-sync master export
+    sync_drift = abs(stitched_dur - master_dur)
+    print(f"[Compositor] [Sync Gate] Stitched Video: {stitched_dur:.2f}s | Master Target: {master_dur:.2f}s | Drift: {sync_drift:.3f}s")
+    if sync_drift > 1.5:
+        raise RuntimeError(
+            f"[Compositor] Automated Sync Gate FAILED: Stitched video ({stitched_dur:.2f}s) and target master "
+            f"({master_dur:.2f}s, voice={voice_dur:.2f}s) drift by {sync_drift:.2f}s > 1.5s threshold! "
+            f"Halting master composition to prevent out-of-sync export."
+        )
+    print(f"[Compositor] ✓ Automated Sync Gate PASSED (Drift: {sync_drift:.3f}s <= 1.5s threshold)")
     
     mixed_audio_wav = str(temp_dir / "mixed_master_audio.wav")
     mix_master_audio_numpy(

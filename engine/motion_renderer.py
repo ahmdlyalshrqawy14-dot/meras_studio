@@ -70,21 +70,36 @@ def get_safe_worker_count(requested_workers: int = 2) -> int:
         return 1
 
 def get_media_duration(file_path: str) -> float:
-    """Robust duration extraction using ffmpeg stderr output."""
+    """Robust duration extraction using ffprobe or ffmpeg stderr output."""
     import re
     if not os.path.exists(file_path):
         return 0.0
     creationflags = subprocess.BELOW_NORMAL_PRIORITY_CLASS if hasattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS") else 0
-    res = subprocess.run(
-        ["ffmpeg", "-i", file_path],
-        capture_output=True,
-        text=True,
-        creationflags=creationflags
-    )
-    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
-    if m:
-        h, m_, s = m.groups()
-        return int(h) * 3600 + int(m_) * 60 + float(s)
+    try:
+        res = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path],
+            capture_output=True, text=True, creationflags=creationflags
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            val = float(res.stdout.strip())
+            if val > 0:
+                return round(val, 3)
+    except Exception:
+        pass
+
+    try:
+        res = subprocess.run(
+            ["ffmpeg", "-i", file_path],
+            capture_output=True,
+            text=True,
+            creationflags=creationflags
+        )
+        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
+        if m:
+            h, m_, s = m.groups()
+            return round(int(h) * 3600 + int(m_) * 60 + float(s), 3)
+    except Exception:
+        pass
     return 0.0
 
 def render_scene_clip_deterministic(
